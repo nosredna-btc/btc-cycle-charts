@@ -1,0 +1,21 @@
+{
+    "current_price": 93469.3828125,
+    "timestamp_gmt": "2024-12-29T19:59:34.231820+00:00",
+    "chart_titles": {
+        "powerlaw": [
+            "Power Law 4 year view",
+            "Power Law 2 year view",
+            "Power Law 1 year view"
+        ],
+        "quantiles": [
+            "Quantiles 4 year view",
+            "Quantiles 2 year view",
+            "Quantiles 1 year view"
+        ],
+        "ghostly_days": [
+            "Days Ahead 4 year view",
+            "Days Ahead 2 year view",
+            "Days Ahead 1 year view"
+        ]
+    }
+}
