@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Bitcoin 4 Year Bitcoin Charts</title>
+    <link rel="icon" href="assets/bitcoin.ico" type="image/x-icon">
+    <style>
+        /* CSS Variables for Reusability */
+        :root {
+            --body-bg: #f0f0f0;
+            --text-color: #333;
+            --subtext-color: #555;
+            --font-family: Arial, sans-serif;
+            --chart-bg: #fff;
+            --border-color: #ddd;
+            --box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            --hover-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            --transition-speed: 0.3s;
+            --chart-width: 400px;
+            --chart-height: 290px;
+            --single-chart-width: 800px;
+            --single-chart-height: 600px;
+            --caption-font-size: 14px;
+            --single-caption-font-size: 18px;
+            --nav-button-bg: #4CAF50;
+            --nav-button-hover-bg: #45a049;
+            --nav-button-active-bg: #357a38;
+        }
+
+        /* Global Styles */
+        body {
+            font-family: var(--font-family);
+            background-color: var(--body-bg);
+            margin: 20px;
+        }
+
+        h1, h2 {
+            text-align: center;
+            color: var(--text-color);
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        /* Navigation Buttons */
+        .nav-button {
+            padding: 8px 16px;
+            background-color: var(--nav-button-bg);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color var(--transition-speed);
+        }
+
+        .nav-button:hover {
+            background-color: var(--nav-button-hover-bg);
+        }
+
+        .nav-button.active {
+            background-color: var(--nav-button-active-bg);
+        }
+
+        /* Charts Grid */
+        .charts-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        /* Chart Items */
+        .chart-item {
+            background-color: var(--chart-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: var(--box-shadow);
+            width: var(--chart-width);
+            height: var(--chart-height);
+            cursor: pointer;
+            transition: box-shadow var(--transition-speed);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* Single Chart Overrides */
+        .charts-grid.single-chart .chart-item {
+            width: var(--single-chart-width);
+            height: var(--single-chart-height);
+            margin: 0 auto;
+            max-width: none;
+        }
+
+        .charts-grid.single-chart .chart-wrapper {
+            flex: 0 0 500px;
+        }
+
+        .charts-grid.single-chart .caption {
+            font-size: var(--single-caption-font-size);
+        }
+
+        /* Chart Wrapper */
+        .chart-wrapper {
+            flex: 0 0 240px;
+            background-color: var(--chart-bg);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chart-wrapper img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 4px;
+            transition: transform 0.2s ease;
+        }
+
+        /* Caption */
+        .caption-wrapper {
+            flex: 0 0 30px;
+            display: flex;
+            align-items: center;
+        }
+
+        .caption {
+            width: 100%;
+            text-align: center;
+            font-size: var(--caption-font-size);
+            color: var(--subtext-color);
+        }
+
+        /* Hover Effects */
+        .chart-item:hover {
+            box-shadow: var(--hover-shadow);
+        }
+
+        .chart-item:hover img {
+            transform: scale(1.02);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.9);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+            cursor: pointer;
+        }
+
+        .modal-content {
+            margin: auto;
+            display: block;
+            max-width: 90%;
+            max-height: 90vh;
+            position: relative;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: default;
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            /* Only apply to non-single-chart views */
+            .charts-grid:not(.single-chart) .chart-item,
+            .charts-grid:not(.single-chart) .chart-wrapper {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Modal for Enlarged Chart -->
+    <div id="imageModal" class="modal" aria-hidden="true" role="dialog">
+        <img class="modal-content" id="modalImage" alt="Enlarged Chart">
+    </div>
+
+    <h1>Bitcoin 4 Year Cycle Charts</h1>
+
+    <!-- Update Time Display -->
+    <div id="updateTime" style="text-align: center; margin-bottom: 20px; font-size: 16px; color: var(--subtext-color);">
+        Charts up to date as of ...
+    </div>
+
+    <!-- Navigation Buttons -->
+    <div class="navigation">
+        <button class="nav-button" data-page="1">Featured Chart</button>
+        <button class="nav-button" data-page="2">Power Law Charts</button>
+        <button class="nav-button" data-page="3">Quantiles Charts</button>
+        <button class="nav-button" data-page="4">Days Ahead Charts</button>
+        <button class="nav-button" data-page="5">All Charts</button>
+    </div>
+
+    <!-- Container for Charts -->
+    <div id="chartContainer"></div>
+
+    <script>
+        // Configuration for Each Page
+        const pageConfigs = {
+            1: {
+                title: "Featured Chart",
+                charts: ['powerlaw_chart1']
+            },
+            2: {
+                title: "Power Law Charts",
+                charts: ['powerlaw_chart1', 'powerlaw_chart2', 'powerlaw_chart3']
+            },
+            3: {
+                title: "Quantiles Charts",
+                charts: ['quantiles_chart1', 'quantiles_chart2', 'quantiles_chart3']
+            },
+            4: {
+                title: "Days Ahead Charts",
+                charts: ['ghostly_days_chart1', 'ghostly_days_chart2', 'ghostly_days_chart3']
+            },
+            5: {
+                title: "All Charts",
+                charts: [
+                    'powerlaw_chart1', 'powerlaw_chart2', 'powerlaw_chart3',
+                    'quantiles_chart1', 'quantiles_chart2', 'quantiles_chart3',
+                    'ghostly_days_chart1', 'ghostly_days_chart2', 'ghostly_days_chart3'
+                ]
+            }
+        };
+
+        // Data for Each Chart
+        const chartData = {
+            /* 
+               We'll only override the 9 "price" charts below
+               when we fetch their custom titles from chart_info.json.
+            */
+            powerlaw_chart1: {
+                alt: "Power Law / 4 year view",
+                caption: "Power Law / 4 year view",
+                date: "1 Jan 2024 through 31 Dec 2027",
+                path: 'charts/bitcoin_cycles_2024_2027.png'
+            },
+            powerlaw_chart2: {
+                alt: "Power Law / 2 year view",
+                caption: "Power Law / 2 year view",
+                date: "1 Jan 2024 through 31 Dec 2025",
+                path: 'charts/bitcoin_cycles_2024_2025.png'
+            },
+            powerlaw_chart3: {
+                alt: "Power Law / 1 year view",
+                caption: "Power Law / 1 year view",
+                date: `1 Jan ${new Date().getFullYear()} through 31 Dec ${new Date().getFullYear()}`,
+                path: `charts/bitcoin_cycles_${new Date().getFullYear()}_powerlaw.png`
+            },
+            quantiles_chart1: {
+                alt: "Quantiles / 4 year view",
+                caption: "Quantiles / 4 year view",
+                date: "1 Jan 2024 through 31 Dec 2027",
+                path: 'charts/bitcoin_cycles_quantiles_2024_2027.png'
+            },
+            quantiles_chart2: {
+                alt: "Quantiles / 2 year view",
+                caption: "Quantiles / 2 year view",
+                date: "1 Jan 2024 through 31 Dec 2025",
+                path: 'charts/bitcoin_cycles_quantiles_2024_2025.png'
+            },
+            quantiles_chart3: {
+                alt: "Quantiles / 1 year view",
+                caption: "Quantiles / 1 year view",
+                date: `1 Jan ${new Date().getFullYear()} through 31 Dec ${new Date().getFullYear()}`,
+                path: `charts/bitcoin_cycles_${new Date().getFullYear()}_quantiles.png`
+            },
+            ghostly_days_chart1: {
+                alt: 'Days Ahead / 4 year view',
+                caption: 'Days Ahead / 4 year view',
+                date: "1 Jan 2024 through 31 Dec 2027",
+                path: 'charts/bitcoin_cycles_days_ahead_2024_2027.png'
+            },
+            ghostly_days_chart2: {
+                alt: 'Days Ahead / 2 year view',
+                caption: 'Days Ahead / 2 year view',
+                date: "1 Jan 2024 through 31 Dec 2025",
+                path: 'charts/bitcoin_cycles_days_ahead_2024_2025.png'
+            },
+            ghostly_days_chart3: {
+                alt: 'Days Ahead / 1 year view',
+                caption: 'Days Ahead / 1 year view',
+                date: `1 Jan ${new Date().getFullYear()} through 31 Dec ${new Date().getFullYear()}`,
+                path: `charts/bitcoin_cycles_${new Date().getFullYear()}_ghostly_days.png`
+            },
+        };
+
+        let currentPage = 1;
+        let currentModalIndex = -1;
+        const modal = document.getElementById('imageModal');
+        const modalImg = document.getElementById('modalImage');
+        const container = document.getElementById('chartContainer');
+        const loadedImages = {};
+
+        // Preload Images to Improve Performance
+        async function preloadImages() {
+            const timestamp = new Date().toISOString();
+            const promises = Object.entries(chartData).map(([id, chart]) => {
+                return new Promise(resolve => {
+                    const img = new Image();
+                    img.src = `${chart.path}?v=${timestamp}`;
+                    img.onload = resolve;
+                    img.onerror = resolve;
+                }).then(() => {
+                    loadedImages[id] = `${chart.path}?v=${timestamp}`;
+                });
+            });
+            await Promise.all(promises);
+        }
+
+        // Function to fetch and display update time (and now also chart titles)
+        async function displayUpdateTime() {
+            try {
+                const response = await fetch('/charts/chart_info.json');
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const data = await response.json();
+
+                // Update time
+                const gmtTimestamp = data.timestamp_gmt;
+                if (gmtTimestamp) {
+                    const dateObj = new Date(gmtTimestamp);
+                    if (!isNaN(dateObj)) {
+                        const localTimeString = dateObj.toLocaleString();
+                        document.getElementById('updateTime').innerText =
+                            `Charts up to date as of ${localTimeString}`;
+                    } else {
+                        document.getElementById('updateTime').innerText =
+                            'Charts up to date as of an unknown time';
+                    }
+                } else {
+                    document.getElementById('updateTime').innerText =
+                        'Charts up to date as of an unknown time';
+                }
+
+                // Override the 9 price chart captions with data from the JSON
+                if (data.chart_titles) {
+                    const { powerlaw, quantiles, ghostly_days } = data.chart_titles;
+                    // For powerlaw price charts
+                    if (powerlaw && powerlaw.length >= 3) {
+                        chartData.powerlaw_chart1.caption = powerlaw[0];
+                        chartData.powerlaw_chart2.caption = powerlaw[1];
+                        chartData.powerlaw_chart3.caption = powerlaw[2];
+                    }
+                    // For quantiles price charts
+                    if (quantiles && quantiles.length >= 3) {
+                        chartData.quantiles_chart1.caption = quantiles[0];
+                        chartData.quantiles_chart2.caption = quantiles[1];
+                        chartData.quantiles_chart3.caption = quantiles[2];
+                    }
+                    // For ghostly_days price charts
+                    if (ghostly_days && ghostly_days.length >= 3) {
+                        chartData.ghostly_days_chart1.caption = ghostly_days[0];
+                        chartData.ghostly_days_chart2.caption = ghostly_days[1];
+                        chartData.ghostly_days_chart3.caption = ghostly_days[2];
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching or parsing chart_info.json:', error);
+                document.getElementById('updateTime').innerText =
+                    'Charts up to date as of an unknown time';
+            }
+        }
+
+        // Render Charts Based on Selected Page
+        function renderPage(pageNumber) {
+            const config = pageConfigs[pageNumber];
+            const isSingleChart = pageNumber === 1;
+            container.innerHTML = `
+                <h2>${config.title}</h2>
+                <div class="charts-grid ${isSingleChart ? 'single-chart' : ''}">
+                    ${config.charts.map(chartId => {
+                        const chart = chartData[chartId];
+                        return `
+                            <div class="chart-item">
+                                <div class="chart-wrapper">
+                                    <img src="${loadedImages[chartId] || ''}" alt="${chart.alt}">
+                                </div>
+                                <div class="caption-wrapper">
+                                    <div class="caption">
+                                        <strong>${chart.caption}</strong><br>
+                                        ${chart.date}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+
+            // Update Active Navigation Button
+            document.querySelectorAll('.nav-button').forEach(button => {
+                button.classList.toggle('active', parseInt(button.dataset.page) === pageNumber);
+            });
+
+            // Attach Click Events to Charts
+            document.querySelectorAll('.chart-item').forEach((item, index) => {
+                item.addEventListener('click', () => openModal(index));
+            });
+        }
+
+        // Open Modal with Selected Chart
+        function openModal(index) {
+            const currentCharts = pageConfigs[currentPage].charts;
+            if (index >= 0 && index < currentCharts.length) {
+                currentModalIndex = index;
+                const chartId = currentCharts[currentModalIndex];
+                modalImg.src = loadedImages[chartId];
+                modal.style.display = 'block';
+                modal.setAttribute('aria-hidden', 'false');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        // Close Modal
+        function closeModal() {
+            modal.style.display = 'none';
+            modal.setAttribute('aria-hidden', 'true');
+            currentModalIndex = -1;
+            document.body.style.overflow = '';
+        }
+
+        // Event Listener for Modal Click
+        modal.addEventListener('click', closeModal);
+
+        // Keyboard Navigation for Modal
+        document.addEventListener('keydown', function(event) {
+            if (modal.style.display === 'block') {
+                const currentCharts = pageConfigs[currentPage].charts;
+                switch (event.key) {
+                    case 'Escape':
+                    case ' ':
+                    case 'Enter':
+                        event.preventDefault();
+                        closeModal();
+                        break;
+                    case 'ArrowRight':
+                        event.preventDefault();
+                        currentModalIndex = (currentModalIndex + 1) % currentCharts.length;
+                        modalImg.src = loadedImages[currentCharts[currentModalIndex]];
+                        break;
+                    case 'ArrowLeft':
+                        event.preventDefault();
+                        currentModalIndex = (currentModalIndex - 1 + currentCharts.length) % currentCharts.length;
+                        modalImg.src = loadedImages[currentCharts[currentModalIndex]];
+                        break;
+                }
+            }
+        });
+
+        // Navigation Button Click Events
+        document.querySelectorAll('.nav-button').forEach(button => {
+            button.addEventListener('click', () => {
+                currentPage = parseInt(button.dataset.page);
+                renderPage(currentPage);
+            });
+        });
+
+        // Initialize the Page
+        window.addEventListener('DOMContentLoaded', async () => {
+            // First fetch time and the new chart titles
+            await displayUpdateTime();
+            // Then preload images
+            await preloadImages();
+            // Finally render
+            renderPage(currentPage);
+        });
+    </script>
+</body>
+</html>
