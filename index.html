@@ -325,7 +325,7 @@
         // Function to fetch and display update time (and now also chart titles)
         async function displayUpdateTime() {
             try {
-                const response = await fetch('/charts/chart_info.json');
+                const response = await fetch('charts/chart_info.json');
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
                 }
