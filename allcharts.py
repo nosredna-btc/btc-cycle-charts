@@ -318,6 +318,13 @@ def main():
         # btc_yf = yf.download('BTC-USD', start=start_date, end=end_date)
         btc_yf = yf.download('BTC-USD', start=start_date, end=end_date)
         if not btc_yf.empty:
+            # Check if columns are multi-level
+            if isinstance(btc_yf.columns, pd.MultiIndex):
+                # Flatten multi-level columns and keep only the 'Close' values
+                btc_yf.columns = btc_yf.columns.get_level_values(0)
+            # Reset index as before
+            btc_yf.reset_index(inplace=True)
+            logger.info(f"Yahoo data after normalizing columns:\n{btc_yf.head()}")            
             logger.info(f"Raw Yahoo Finance data fetched:\n{btc_yf}")
             logger.info(f"DataFrame metadata: columns={btc_yf.columns}, index={btc_yf.index}")
             
