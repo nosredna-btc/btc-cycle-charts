@@ -437,6 +437,13 @@ def main():
         (combined_data['upper_bound_quantiles'] - combined_data['support_quantiles'])
     )
 
+    # Emit the first 5 rows for debugging
+    logger.info("First 5 rows of the combined data:")
+    logger.info(combined_data.head(5))
+    # Emit the last 5 rows for debugging
+    logger.info("Last 5 rows of the combined data:")
+    logger.info(combined_data.tail(5))
+    
     # Check for missing days
     date_range = pd.date_range(start=combined_data['Start'].min(), end=combined_data['Start'].max(), freq='D')
     missing_dates = date_range.difference(combined_data['Start'])
