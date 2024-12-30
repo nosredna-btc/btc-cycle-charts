@@ -1,0 +1,5 @@
+# Ignore all contents of charts
+charts/*
+
+# Allow .gitkeep to retain the directory structure
+!charts/.gitkeep
