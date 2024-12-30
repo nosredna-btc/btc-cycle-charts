@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Log workflow start time
+        run: echo "Workflow started at $(date)"
+
       - name: Check out code
         uses: actions/checkout@v3
 
@@ -31,6 +34,9 @@ jobs:
         run: |
           mkdir -p charts
           mv charts_dev/* charts
+
+      - name: Log workflow completion time
+        run: echo "Workflow completed at $(date)"
 
       - name: Commit and push changes
         run: |
