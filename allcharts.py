@@ -318,6 +318,9 @@ def main():
         # btc_yf = yf.download('BTC-USD', start=start_date, end=end_date)
         btc_yf = yf.download('BTC-USD', start=start_date, end=end_date)
         if not btc_yf.empty:
+            logger.info(f"Raw Yahoo Finance data fetched:\n{btc_yf}")
+            logger.info(f"DataFrame metadata: columns={btc_yf.columns}, index={btc_yf.index}")
+            
             logger.info(f"Fetched {len(btc_yf)} rows from Yahoo Finance.")
             btc_yf.reset_index(inplace=True)
             btc_yf = btc_yf.rename(columns={'Date': 'Start'})
