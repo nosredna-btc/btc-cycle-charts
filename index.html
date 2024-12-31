@@ -500,10 +500,10 @@
             }
         }
 
-        // Function to start polling the JSON every 1 minute
+        // Function to start polling the JSON every 10 minutes
         function startPolling() {
             if (!updateInterval) {
-                console.log('Starting polling for chart updates every 1 minute.');
+                console.log('Starting polling for chart updates every 10 minutes.');
                 updateInterval = setInterval(async () => {
                     console.log('Initiating scheduled JSON poll.');
                     // Check if REFRESH button is present
@@ -515,7 +515,7 @@
 
                     // Proceed with polling
                     await displayUpdateTime();
-                }, 60000); // 60,000 ms = 1 minute
+                }, 60000); // 600,000 ms = 10 minutes
             }
         }
 
