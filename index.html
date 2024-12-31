@@ -336,9 +336,18 @@
                 if (gmtTimestamp) {
                     const dateObj = new Date(gmtTimestamp);
                     if (!isNaN(dateObj)) {
-                        const localTimeString = dateObj.toLocaleString();
+                        // Format: "31 Dec 2024, 3:48 AM"
+                        const formattedDate = dateObj.toLocaleString('en-GB', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                        }).replace(',', '');  // Remove comma between date and time
+                
                         document.getElementById('updateTime').innerText =
-                            `Charts up to date as of ${localTimeString}`;
+                            `Charts up to date as of ${formattedDate}`;
                     } else {
                         document.getElementById('updateTime').innerText =
                             'Charts up to date as of an unknown time';
