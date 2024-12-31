@@ -25,6 +25,8 @@
             --nav-button-bg: #4CAF50;
             --nav-button-hover-bg: #45a049;
             --nav-button-active-bg: #357a38;
+            --refresh-button-color: #4CAF50;
+            --refresh-button-hover-color: #45a049;
         }
 
         /* Global Styles */
@@ -181,6 +183,39 @@
                 width: 100%;
             }
         }
+
+        /* Animation for REFRESH Button */
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.1);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        #refreshButton {
+            animation: pulse 2s infinite;
+            /* Additional styles for smoothness */
+            transition: transform 0.2s ease, opacity 0.2s ease, color 0.3s ease;
+            color: var(--refresh-button-color);
+            background: none;
+            border: none;
+            cursor: pointer;
+            margin-left: 8px;
+            font-size: 12px;
+            padding: 0;
+        }
+
+        #refreshButton:hover {
+            color: var(--refresh-button-hover-color);
+        }
     </style>
 </head>
 <body>
@@ -309,27 +344,37 @@
 
         // Preload Images to Improve Performance
         async function preloadImages() {
+            console.log('Starting image preloading...');
             const timestamp = new Date().toISOString();
             const promises = Object.entries(chartData).map(([id, chart]) => {
                 return new Promise(resolve => {
                     const img = new Image();
                     img.src = `${chart.path}?v=${timestamp}`;
-                    img.onload = resolve;
-                    img.onerror = resolve;
+                    img.onload = () => {
+                        console.log(`Image loaded: ${chart.path}`);
+                        resolve();
+                    };
+                    img.onerror = (error) => {
+                        console.error(`Error loading image: ${chart.path}`, error);
+                        resolve(); // Resolve even on error to continue loading other images
+                    };
                 }).then(() => {
                     loadedImages[id] = `${chart.path}?v=${timestamp}`;
                 });
             });
             await Promise.all(promises);
+            console.log('Image preloading completed.');
         }
 
         // Function to fetch and display update time (and now also chart titles)
         async function displayUpdateTime() {
+            console.log('Fetching chart update information...');
             try {
                 const response = await fetch('charts/chart_info.json');
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
                 }
+                console.log('Chart update information fetched successfully.');
                 const data = await response.json();
 
                 // Extract timestamp
@@ -353,6 +398,7 @@
                             document.getElementById('updateTime').innerText =
                                 `Charts up to date as of ${formattedDate}`;
                             previousTimestamp = gmtTimestamp;
+                            console.log(`Update time set to: ${formattedDate}`);
                         }
                     }
                 } else if (gmtTimestamp && gmtTimestamp !== previousTimestamp) {
@@ -361,20 +407,25 @@
 
                     // Prevent multiple REFRESH buttons
                     if (!updateTimeElement.querySelector('#refreshButton')) {
+                        console.log('New update available. Displaying REFRESH button.');
                         // Create a new button with small/light styling
                         const refreshButton = document.createElement('button');
                         refreshButton.id = 'refreshButton';
                         refreshButton.innerText = 'REFRESH';
+                        // Update inline styles to match CSS
                         refreshButton.style.fontSize = '12px';
-                        refreshButton.style.color = '#999';
                         refreshButton.style.background = 'none';
                         refreshButton.style.border = 'none';
                         refreshButton.style.cursor = 'pointer';
                         refreshButton.style.marginLeft = '8px';
+                        refreshButton.style.color = 'var(--refresh-button-color)';
+                        refreshButton.style.animation = 'pulse 2s infinite';
 
                         // Clicking this button removes it, updates time, reloads images, and re-renders
                         refreshButton.addEventListener('click', async () => {
+                            console.log('REFRESH button clicked.');
                             refreshButton.remove();
+                            console.log('REFRESH button removed from the DOM.');
 
                             if (newTimestamp) {
                                 const dateObj = new Date(newTimestamp);
@@ -391,24 +442,30 @@
 
                                     document.getElementById('updateTime').innerText =
                                         `Charts up to date as of ${formattedDate}`;
+                                    console.log(`Update time updated to: ${formattedDate}`);
                                     previousTimestamp = newTimestamp;
                                     newTimestamp = null;
                                 }
                             }
 
                             // Reload images and re-render the page
+                            console.log('Reloading images due to REFRESH.');
                             await preloadImages();
+                            console.log('Images reloaded. Re-rendering page.');
                             renderPage(currentPage);
 
                             // Restart polling
+                            console.log('Restarting polling for updates.');
                             startPolling();
                         });
 
                         // Append the button after the update time text
                         updateTimeElement.appendChild(refreshButton);
+                        console.log('REFRESH button appended to updateTime element.');
 
                         // Stop polling since REFRESH is now visible
                         stopPolling();
+                        console.log('Polling stopped due to new update availability.');
                     }
                 }
 
@@ -420,18 +477,21 @@
                         chartData.powerlaw_chart1.caption = powerlaw[0];
                         chartData.powerlaw_chart2.caption = powerlaw[1];
                         chartData.powerlaw_chart3.caption = powerlaw[2];
+                        console.log('Power Law chart captions updated from JSON.');
                     }
                     // For quantiles price charts
                     if (quantiles && quantiles.length >= 3) {
                         chartData.quantiles_chart1.caption = quantiles[0];
                         chartData.quantiles_chart2.caption = quantiles[1];
                         chartData.quantiles_chart3.caption = quantiles[2];
+                        console.log('Quantiles chart captions updated from JSON.');
                     }
                     // For ghostly_days price charts
                     if (ghostly_days && ghostly_days.length >= 3) {
                         chartData.ghostly_days_chart1.caption = ghostly_days[0];
                         chartData.ghostly_days_chart2.caption = ghostly_days[1];
                         chartData.ghostly_days_chart3.caption = ghostly_days[2];
+                        console.log('Ghostly Days Ahead chart captions updated from JSON.');
                     }
                 }
             } catch (error) {
@@ -440,10 +500,22 @@
             }
         }
 
-        // Function to start polling the JSON every 10 minutes
+        // Function to start polling the JSON every 1 minute
         function startPolling() {
             if (!updateInterval) {
-                updateInterval = setInterval(displayUpdateTime, 600000);
+                console.log('Starting polling for chart updates every 1 minute.');
+                updateInterval = setInterval(async () => {
+                    console.log('Initiating scheduled JSON poll.');
+                    // Check if REFRESH button is present
+                    const updateTimeElement = document.getElementById('updateTime');
+                    if (updateTimeElement.querySelector('#refreshButton')) {
+                        console.log('Polling skipped: REFRESH button is visible.');
+                        return; // Skip polling since REFRESH is active
+                    }
+
+                    // Proceed with polling
+                    await displayUpdateTime();
+                }, 60000); // 60,000 ms = 1 minute
             }
         }
 
@@ -452,11 +524,13 @@
             if (updateInterval) {
                 clearInterval(updateInterval);
                 updateInterval = null;
+                console.log('Polling for chart updates has been stopped.');
             }
         }
 
         // Render Charts Based on Selected Page
         function renderPage(pageNumber) {
+            console.log(`Rendering page ${pageNumber}: ${pageConfigs[pageNumber].title}`);
             const config = pageConfigs[pageNumber];
             const isSingleChart = pageNumber === 1;
             container.innerHTML = `
@@ -465,7 +539,7 @@
                     ${config.charts.map(chartId => {
                         const chart = chartData[chartId];
                         return `
-                            <div class="chart-item">
+                            <div class="chart-item" data-chart-id="${chartId}">
                                 <div class="chart-wrapper">
                                     <img src="${loadedImages[chartId] || ''}" alt="${chart.alt}">
                                 </div>
@@ -483,12 +557,20 @@
 
             // Update Active Navigation Button
             document.querySelectorAll('.nav-button').forEach(button => {
-                button.classList.toggle('active', parseInt(button.dataset.page) === pageNumber);
+                const isActive = parseInt(button.dataset.page) === pageNumber;
+                button.classList.toggle('active', isActive);
+                if (isActive) {
+                    console.log(`Navigation button "${button.innerText}" is now active.`);
+                }
             });
 
             // Attach Click Events to Charts
             document.querySelectorAll('.chart-item').forEach((item, index) => {
-                item.addEventListener('click', () => openModal(index));
+                item.addEventListener('click', () => {
+                    const chartId = item.getAttribute('data-chart-id');
+                    console.log(`Chart clicked: ${chartId} (Index: ${index})`);
+                    openModal(index);
+                });
             });
         }
 
@@ -502,6 +584,7 @@
                 modal.style.display = 'block';
                 modal.setAttribute('aria-hidden', 'false');
                 document.body.style.overflow = 'hidden';
+                console.log(`Modal opened for chart: ${chartId} (Index: ${index})`);
             }
         }
 
@@ -509,12 +592,16 @@
         function closeModal() {
             modal.style.display = 'none';
             modal.setAttribute('aria-hidden', 'true');
+            console.log('Modal closed.');
             currentModalIndex = -1;
             document.body.style.overflow = '';
         }
 
         // Event Listener for Modal Click
-        modal.addEventListener('click', closeModal);
+        modal.addEventListener('click', () => {
+            console.log('Modal background clicked.');
+            closeModal();
+        });
 
         // Keyboard Navigation for Modal
         document.addEventListener('keydown', function(event) {
@@ -522,20 +609,27 @@
                 const currentCharts = pageConfigs[currentPage].charts;
                 switch (event.key) {
                     case 'Escape':
+                        event.preventDefault();
+                        console.log('Escape key pressed. Closing modal.');
+                        closeModal();
+                        break;
                     case ' ':
                     case 'Enter':
                         event.preventDefault();
+                        console.log(`"${event.key}" key pressed. Closing modal.`);
                         closeModal();
                         break;
                     case 'ArrowRight':
                         event.preventDefault();
                         currentModalIndex = (currentModalIndex + 1) % currentCharts.length;
                         modalImg.src = loadedImages[currentCharts[currentModalIndex]];
+                        console.log(`ArrowRight pressed. Navigating to next chart: ${currentCharts[currentModalIndex]} (Index: ${currentModalIndex})`);
                         break;
                     case 'ArrowLeft':
                         event.preventDefault();
                         currentModalIndex = (currentModalIndex - 1 + currentCharts.length) % currentCharts.length;
                         modalImg.src = loadedImages[currentCharts[currentModalIndex]];
+                        console.log(`ArrowLeft pressed. Navigating to previous chart: ${currentCharts[currentModalIndex]} (Index: ${currentModalIndex})`);
                         break;
                 }
             }
@@ -544,13 +638,16 @@
         // Navigation Button Click Events
         document.querySelectorAll('.nav-button').forEach(button => {
             button.addEventListener('click', () => {
-                currentPage = parseInt(button.dataset.page);
+                const selectedPage = parseInt(button.dataset.page);
+                console.log(`Navigation button clicked: ${button.innerText} (Page: ${selectedPage})`);
+                currentPage = selectedPage;
                 renderPage(currentPage);
             });
         });
 
         // Initialize the Page
         window.addEventListener('DOMContentLoaded', async () => {
+            console.log('DOM fully loaded and parsed. Initializing application...');
             // First fetch time and the new chart titles
             await displayUpdateTime();
             // Then preload images
@@ -559,6 +656,7 @@
             renderPage(currentPage);
             // Start polling
             startPolling();
+            console.log('Application initialized successfully.');
         });
     </script>
 </body>
