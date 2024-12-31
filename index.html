@@ -209,6 +209,11 @@
     <div id="chartContainer"></div>
 
     <script>
+        // Keep track of last fetched timestamp
+        let previousTimestamp = null;
+        let newTimestamp = null;
+        let updateInterval = null;
+
         // Configuration for Each Page
         const pageConfigs = {
             1: {
@@ -239,10 +244,6 @@
 
         // Data for Each Chart
         const chartData = {
-            /* 
-               We'll only override the 9 "price" charts below
-               when we fetch their custom titles from chart_info.json.
-            */
             powerlaw_chart1: {
                 alt: "Power Law / 4 year view",
                 caption: "Power Law / 4 year view",
@@ -331,30 +332,84 @@
                 }
                 const data = await response.json();
 
-                // Update time
+                // Extract timestamp
                 const gmtTimestamp = data.timestamp_gmt;
-                if (gmtTimestamp) {
-                    const dateObj = new Date(gmtTimestamp);
-                    if (!isNaN(dateObj)) {
-                        // Format: "31 Dec 2024, 3:48 AM"
-                        const formattedDate = dateObj.toLocaleString('en-GB', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            hour12: true
-                        }).replace(',', '');  // Remove comma between date and time
-                
-                        document.getElementById('updateTime').innerText =
-                            `Charts up to date as of ${formattedDate}`;
-                    } else {
-                        document.getElementById('updateTime').innerText =
-                            'Charts up to date as of an unknown time';
+
+                // Only set updateTime on initial load
+                if (!previousTimestamp) {
+                    if (gmtTimestamp) {
+                        const dateObj = new Date(gmtTimestamp);
+                        if (!isNaN(dateObj)) {
+                            // Format: "31 Dec 2024 3:48 AM"
+                            const formattedDate = dateObj.toLocaleString('en-GB', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                                hour12: true
+                            }).replace(',', '');
+
+                            document.getElementById('updateTime').innerText =
+                                `Charts up to date as of ${formattedDate}`;
+                            previousTimestamp = gmtTimestamp;
+                        }
                     }
-                } else {
-                    document.getElementById('updateTime').innerText =
-                        'Charts up to date as of an unknown time';
+                } else if (gmtTimestamp && gmtTimestamp !== previousTimestamp) {
+                    newTimestamp = gmtTimestamp;
+                    const updateTimeElement = document.getElementById('updateTime');
+
+                    // Prevent multiple REFRESH buttons
+                    if (!updateTimeElement.querySelector('#refreshButton')) {
+                        // Create a new button with small/light styling
+                        const refreshButton = document.createElement('button');
+                        refreshButton.id = 'refreshButton';
+                        refreshButton.innerText = 'REFRESH';
+                        refreshButton.style.fontSize = '12px';
+                        refreshButton.style.color = '#999';
+                        refreshButton.style.background = 'none';
+                        refreshButton.style.border = 'none';
+                        refreshButton.style.cursor = 'pointer';
+                        refreshButton.style.marginLeft = '8px';
+
+                        // Clicking this button removes it, updates time, reloads images, and re-renders
+                        refreshButton.addEventListener('click', async () => {
+                            refreshButton.remove();
+
+                            if (newTimestamp) {
+                                const dateObj = new Date(newTimestamp);
+                                if (!isNaN(dateObj)) {
+                                    // Format: "31 Dec 2024 3:48 AM"
+                                    const formattedDate = dateObj.toLocaleString('en-GB', {
+                                        day: '2-digit',
+                                        month: 'short',
+                                        year: 'numeric',
+                                        hour: 'numeric',
+                                        minute: '2-digit',
+                                        hour12: true
+                                    }).replace(',', '');
+
+                                    document.getElementById('updateTime').innerText =
+                                        `Charts up to date as of ${formattedDate}`;
+                                    previousTimestamp = newTimestamp;
+                                    newTimestamp = null;
+                                }
+                            }
+
+                            // Reload images and re-render the page
+                            await preloadImages();
+                            renderPage(currentPage);
+
+                            // Restart polling
+                            startPolling();
+                        });
+
+                        // Append the button after the update time text
+                        updateTimeElement.appendChild(refreshButton);
+
+                        // Stop polling since REFRESH is now visible
+                        stopPolling();
+                    }
                 }
 
                 // Override the 9 price chart captions with data from the JSON
@@ -381,8 +436,22 @@
                 }
             } catch (error) {
                 console.error('Error fetching or parsing chart_info.json:', error);
-                document.getElementById('updateTime').innerText =
-                    'Charts up to date as of an unknown time';
+                // Do not change the updateTime; leave it as is
+            }
+        }
+
+        // Function to start polling the JSON every 10 minutes
+        function startPolling() {
+            if (!updateInterval) {
+                updateInterval = setInterval(displayUpdateTime, 600000);
+            }
+        }
+
+        // Function to stop polling the JSON
+        function stopPolling() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+                updateInterval = null;
             }
         }
 
@@ -488,6 +557,8 @@
             await preloadImages();
             // Finally render
             renderPage(currentPage);
+            // Start polling
+            startPolling();
         });
     </script>
 </body>
