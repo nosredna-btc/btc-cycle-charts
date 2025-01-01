@@ -247,7 +247,6 @@
         // Keep track of last fetched timestamp
         let previousTimestamp = null;
         let newTimestamp = null;
-        let updateInterval = null;
 
         // Configuration for Each Page
         const pageConfigs = {
@@ -370,7 +369,8 @@
         async function displayUpdateTime() {
             console.log('Fetching chart update information...');
             try {
-                const response = await fetch('charts/chart_info.json');
+                // Add a cache-busting query parameter to ensure fresh data is fetched
+                const response = await fetch(`charts/chart_info.json?v=${Date.now()}`);
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
                 }
@@ -456,7 +456,7 @@
 
                             // Restart polling
                             console.log('Restarting polling for updates.');
-                            startPolling();
+                            startEnhancedPolling();
                         });
 
                         // Append the button after the update time text
@@ -464,7 +464,7 @@
                         console.log('REFRESH button appended to updateTime element.');
 
                         // Stop polling since REFRESH is now visible
-                        stopPolling();
+                        stopEnhancedPolling();
                         console.log('Polling stopped due to new update availability.');
                     }
                 }
@@ -497,34 +497,6 @@
             } catch (error) {
                 console.error('Error fetching or parsing chart_info.json:', error);
                 // Do not change the updateTime; leave it as is
-            }
-        }
-
-        // Function to start polling the JSON every 10 minutes
-        function startPolling() {
-            if (!updateInterval) {
-                console.log('Starting polling for chart updates every 10 minutes.');
-                updateInterval = setInterval(async () => {
-                    console.log('Initiating scheduled JSON poll.');
-                    // Check if REFRESH button is present
-                    const updateTimeElement = document.getElementById('updateTime');
-                    if (updateTimeElement.querySelector('#refreshButton')) {
-                        console.log('Polling skipped: REFRESH button is visible.');
-                        return; // Skip polling since REFRESH is active
-                    }
-
-                    // Proceed with polling
-                    await displayUpdateTime();
-                }, 600000); // 600,000 ms = 10 minutes
-            }
-        }
-
-        // Function to stop polling the JSON
-        function stopPolling() {
-            if (updateInterval) {
-                clearInterval(updateInterval);
-                updateInterval = null;
-                console.log('Polling for chart updates has been stopped.');
             }
         }
 
@@ -645,6 +617,93 @@
             });
         });
 
+        // Enhanced Polling Mechanism to Handle Sleep/Wake
+        (function() {
+            // Define the polling interval (10 minutes in milliseconds)
+            const POLLING_INTERVAL = 10 * 60 * 1000; // 600,000 ms
+
+            // Track the next scheduled poll time
+            let nextPollTime = Date.now() + POLLING_INTERVAL;
+
+            // Reference to the polling function
+            const pollFunction = async () => {
+                const currentTime = Date.now();
+                if (currentTime >= nextPollTime) {
+                    console.log('Initiating scheduled JSON poll.');
+                    await displayUpdateTime();
+                    nextPollTime = currentTime + POLLING_INTERVAL;
+                    console.log(`Next poll scheduled in 10 minutes.`);
+                }
+                scheduleNextPoll();
+            };
+
+            // Schedule the next poll using setTimeout based on the exact time remaining
+            const scheduleNextPoll = () => {
+                const currentTime = Date.now();
+                const timeUntilNextPoll = nextPollTime - currentTime;
+
+                if (timeUntilNextPoll <= 0) {
+                    // If the time has already passed, poll immediately
+                    console.log('Time for next poll has passed. Polling immediately.');
+                    pollFunction();
+                } else {
+                    // Calculate remaining time in minutes and seconds
+                    const minutes = Math.floor(timeUntilNextPoll / 60000);
+                    const seconds = Math.floor((timeUntilNextPoll % 60000) / 1000);
+                    console.log(`Time remaining until next poll: ${minutes} minute(s) and ${seconds} second(s).`);
+
+                    // Use setTimeout to schedule the next poll
+                    setTimeout(pollFunction, timeUntilNextPoll);
+                }
+            };
+
+            // Handle visibility changes
+            const handleVisibilityChange = () => {
+                if (document.visibilityState === 'visible') {
+                    console.log('Page became visible. Checking if poll needs to be triggered.');
+                    const currentTime = Date.now();
+                    if (currentTime >= nextPollTime) {
+                        console.log('Scheduled poll time has passed while the page was hidden. Polling now.');
+                        pollFunction();
+                    } else {
+                        // Optionally, log the remaining time when the page becomes visible
+                        const timeUntilNextPoll = nextPollTime - currentTime;
+                        const minutes = Math.floor(timeUntilNextPoll / 60000);
+                        const seconds = Math.floor((timeUntilNextPoll % 60000) / 1000);
+                        console.log(`Remaining time until next poll after becoming visible: ${minutes} minute(s) and ${seconds} second(s).`);
+                    }
+                }
+            };
+
+            // Listen for visibility changes
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+
+            // Optionally, listen for window focus events as a fallback
+            window.addEventListener('focus', handleVisibilityChange);
+
+            // Start the initial poll schedule
+            scheduleNextPoll();
+
+            // Functions to control the enhanced polling (used when REFRESH is clicked)
+            window.startEnhancedPolling = () => {
+                console.log('Enhanced polling started.');
+                nextPollTime = Date.now() + POLLING_INTERVAL;
+                scheduleNextPoll();
+            };
+
+            window.stopEnhancedPolling = () => {
+                console.log('Enhanced polling stopped.');
+                // Clear any existing timeouts by resetting nextPollTime
+                nextPollTime = Infinity;
+            };
+
+            // Optional: Clean up event listeners when the page is unloaded
+            window.addEventListener('beforeunload', () => {
+                document.removeEventListener('visibilitychange', handleVisibilityChange);
+                window.removeEventListener('focus', handleVisibilityChange);
+            });
+        })();
+
         // Initialize the Page
         window.addEventListener('DOMContentLoaded', async () => {
             console.log('DOM fully loaded and parsed. Initializing application...');
@@ -654,8 +713,8 @@
             await preloadImages();
             // Finally render
             renderPage(currentPage);
-            // Start polling
-            startPolling();
+            // Start polling using the enhanced mechanism
+            startEnhancedPolling();
             console.log('Application initialized successfully.');
         });
     </script>
