@@ -1,39 +1,7 @@
-# Note to AI/ChatGPT: Keep the todo list and the done list up to date, 
-# and do not remove them or these top notes.
-
-# TODO LIST:
-# 2. Redo the color scheme so that the color for each cycle gradually changes near the right edge 
-#    to match the next cycle's color. This way we can more easily see the correspondence between cycles.
-# 4. Going from left to right as each line is plotted, make some subtle darkness or saturation 
-#    change on the line when the day is a new high for the cycle.
-# 5. Indicate on the chart the cycle max price and the cycle min AFTER each max.
-# 9. For many of the days in the history, there is open, close, low, and high price data. I should
-#    be able to do a candles version of the chart, at least for zoomed-in areas.
-#22. Make a better cache busting scheme that only GETs new PNG files if the timestamp inside the json has changed.
-
-# DONE LIST:
-# 1. Output file should be named to match the name of the python file we're running. (Completed on 2024-09-17)
-# 3. Make the major gridlines dark gray rather than black. (Completed on 2024-09-17)
-# 7. Add more output charts. Instead of just a 4-year chart, also do a chart of the current year
-#    for a more zoomed-in view. Also do a chart that graphs ratios instead of prices. (Completed on 2024-09-18)
-# 8. Optimize combining datasets only when new data is fetched. (Completed on 2024-09-18)
-#10. Put the functions (in a pretty, mathematical form) for support and upper bound somewhere on the
-#    chart where it doesn't interfere with the lines or the boxes. (Completed on 2024-09-19)
-#11. Redo comments from scratch. (Completed on 2024-09-18)
-#12. Clean up the code. Make sure everything in the code is used. If not, it should be removed. (Completed on 2024-09-18)
-#13. Optimize for speed and clarity. (Completed on 2024-09-18)
-#14. Stop printing the most recent 3 days of data. (Completed on 2024-09-19)
-#15. Clean up the TODO and DONE sections to make them look cleaner and more consistent. (Completed on 2024-09-19)
-#17. The logged output is too noisy and repetitive. (Completed on 2024-09-20)
-#19. By default, don't display the images, just save them. (Completed on 2024-09-21)
-#20. For the charts that do ratios (only), make the gridlines at 0.0 and 1.0 thicker and darker. (Completed on 2024-09-21)
-#18. Add a command line argument to change the logging level. (Completed on 2024-12-22)
-#22. Implement command-line options to control the generation of ratio charts. (Completed on 2024-12-22)
-#23. Ensure the program lists all command-line options when executed. (Completed on 2024-12-22)
-# 6. The Title and Subtitle of the chart are too crowded together. (Completed on 2024-12-28)
-#16. The credits box will have to be moved around for some of the charts to get out of the way. (Completed on 2024-12-28)
-#21. Make the white background behind the equations completely opaque. (Completed on 2024-12-28)
-
+# Note to AI/ChatGPT/Claude
+# Don't delete or alter this comment block
+# Don't delete commented out code without asking. I might have a half-baked idea I want to keep.
+# Don't delete code that isn't currently called. It miught get called somewhere down the road.
 
 from datetime import datetime, timezone
 import argparse
