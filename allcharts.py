@@ -615,7 +615,7 @@ def main():
             verticalalignment='top',
             horizontalalignment='right',
             color='black',
-            bbox=dict(boxstyle="square,pad=0.2", facecolor="white", edgecolor="black", alpha=alpha_val),
+            bbox=dict(boxstyle="square,pad=0.2", facecolor="white", edgecolor="black", alpha=1.0),
             zorder=5,
         )
 
