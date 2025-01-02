@@ -244,6 +244,9 @@
     <div id="chartContainer"></div>
 
     <script>
+        // Global Cache Buster Variable
+        let cacheBuster = Date.now();
+
         // Keep track of last fetched timestamp
         let previousTimestamp = null;
         let newTimestamp = null;
@@ -339,31 +342,6 @@
         const modal = document.getElementById('imageModal');
         const modalImg = document.getElementById('modalImage');
         const container = document.getElementById('chartContainer');
-        const loadedImages = {};
-
-        // Preload Images to Improve Performance
-        async function preloadImages() {
-            console.log('Starting image preloading...');
-            const timestamp = new Date().toISOString();
-            const promises = Object.entries(chartData).map(([id, chart]) => {
-                return new Promise(resolve => {
-                    const img = new Image();
-                    img.src = `${chart.path}?v=${timestamp}`;
-                    img.onload = () => {
-                        console.log(`Image loaded: ${chart.path}`);
-                        resolve();
-                    };
-                    img.onerror = (error) => {
-                        console.error(`Error loading image: ${chart.path}`, error);
-                        resolve(); // Resolve even on error to continue loading other images
-                    };
-                }).then(() => {
-                    loadedImages[id] = `${chart.path}?v=${timestamp}`;
-                });
-            });
-            await Promise.all(promises);
-            console.log('Image preloading completed.');
-        }
 
         // Function to fetch and display update time (and now also chart titles)
         async function displayUpdateTime() {
@@ -398,6 +376,7 @@
                             document.getElementById('updateTime').innerText =
                                 `Charts up to date as of ${formattedDate}`;
                             previousTimestamp = gmtTimestamp;
+                            cacheBuster = Date.parse(gmtTimestamp);
                             console.log(`Update time set to: ${formattedDate}`);
                         }
                     }
@@ -444,14 +423,13 @@
                                         `Charts up to date as of ${formattedDate}`;
                                     console.log(`Update time updated to: ${formattedDate}`);
                                     previousTimestamp = newTimestamp;
+                                    cacheBuster = Date.parse(newTimestamp);
                                     newTimestamp = null;
                                 }
                             }
 
-                            // Reload images and re-render the page
-                            console.log('Reloading images due to REFRESH.');
-                            await preloadImages();
-                            console.log('Images reloaded. Re-rendering page.');
+                            // Re-render the page to load images with new cacheBuster
+                            console.log('Re-rendering page to load updated images.');
                             renderPage(currentPage);
 
                             // Restart polling
@@ -513,7 +491,7 @@
                         return `
                             <div class="chart-item" data-chart-id="${chartId}">
                                 <div class="chart-wrapper">
-                                    <img src="${loadedImages[chartId] || ''}" alt="${chart.alt}">
+                                    <img src="${chart.path}?v=${cacheBuster}" alt="${chart.alt}">
                                 </div>
                                 <div class="caption-wrapper">
                                     <div class="caption">
@@ -552,7 +530,7 @@
             if (index >= 0 && index < currentCharts.length) {
                 currentModalIndex = index;
                 const chartId = currentCharts[currentModalIndex];
-                modalImg.src = loadedImages[chartId];
+                modalImg.src = `${chartData[chartId].path}?v=${cacheBuster}`;
                 modal.style.display = 'block';
                 modal.setAttribute('aria-hidden', 'false');
                 document.body.style.overflow = 'hidden';
@@ -594,13 +572,13 @@
                     case 'ArrowRight':
                         event.preventDefault();
                         currentModalIndex = (currentModalIndex + 1) % currentCharts.length;
-                        modalImg.src = loadedImages[currentCharts[currentModalIndex]];
+                        modalImg.src = `${chartData[currentCharts[currentModalIndex]].path}?v=${cacheBuster}`;
                         console.log(`ArrowRight pressed. Navigating to next chart: ${currentCharts[currentModalIndex]} (Index: ${currentModalIndex})`);
                         break;
                     case 'ArrowLeft':
                         event.preventDefault();
                         currentModalIndex = (currentModalIndex - 1 + currentCharts.length) % currentCharts.length;
-                        modalImg.src = loadedImages[currentCharts[currentModalIndex]];
+                        modalImg.src = `${chartData[currentCharts[currentModalIndex]].path}?v=${cacheBuster}`;
                         console.log(`ArrowLeft pressed. Navigating to previous chart: ${currentCharts[currentModalIndex]} (Index: ${currentModalIndex})`);
                         break;
                 }
@@ -709,9 +687,7 @@
             console.log('DOM fully loaded and parsed. Initializing application...');
             // First fetch time and the new chart titles
             await displayUpdateTime();
-            // Then preload images
-            await preloadImages();
-            // Finally render
+            // Render the initial page
             renderPage(currentPage);
             // Start polling using the enhanced mechanism
             startEnhancedPolling();
