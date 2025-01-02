@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Bitcoin 4 Year Bitcoin Charts</title>
+    <title>Bitcoin 4 Year Cycle Charts</title>
     <link rel="icon" href="assets/bitcoin.ico" type="image/x-icon">
     <style>
         /* CSS Variables for Reusability */
@@ -27,6 +27,12 @@
             --nav-button-active-bg: #357a38;
             --refresh-button-color: #4CAF50;
             --refresh-button-hover-color: #45a049;
+            --page-text-color: #444;
+            --page-text-bg: #fafafa;
+            --page-text-padding: 20px;
+            --page-text-border-radius: 8px;
+            --page-text-box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            --page-text-margin-top: 20px;
         }
 
         /* Global Styles */
@@ -36,11 +42,24 @@
             margin: 20px;
         }
 
-        h1, h2 {
+        /* Center-align all headers by default */
+        h1, h2, h3, h4, h5, h6 {
             text-align: center;
             color: var(--text-color);
         }
 
+        /* Left-align headers within the #pageText container */
+        #pageText h1,
+        #pageText h2,
+        #pageText h3,
+        #pageText h4,
+        #pageText h5,
+        #pageText h6 {
+            text-align: left;
+            color: var(--text-color);
+        }
+
+        /* Navigation Buttons */
         .navigation {
             display: flex;
             justify-content: center;
@@ -49,7 +68,6 @@
             flex-wrap: wrap;
         }
 
-        /* Navigation Buttons */
         .nav-button {
             padding: 8px 16px;
             background-color: var(--nav-button-bg);
@@ -216,6 +234,39 @@
         #refreshButton:hover {
             color: var(--refresh-button-hover-color);
         }
+
+        /* Styles for Page Text */
+        #pageText {
+            background-color: var(--page-text-bg);
+            color: var(--page-text-color);
+            padding: var(--page-text-padding);
+            border-radius: var(--page-text-border-radius);
+            box-shadow: var(--page-text-box-shadow);
+            margin-top: var(--page-text-margin-top);
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.6;
+        }
+
+        /* Additional Styles for Parsed Content */
+        #pageText h2, #pageText h3, #pageText h4 {
+            color: var(--text-color);
+        }
+
+        #pageText ul {
+            list-style-type: disc;
+            padding-left: 20px;
+        }
+
+        #pageText a {
+            color: var(--nav-button-bg);
+            text-decoration: none;
+        }
+
+        #pageText a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -242,6 +293,9 @@
 
     <!-- Container for Charts -->
     <div id="chartContainer"></div>
+
+    <!-- Container for Page Text -->
+    <div id="pageText"></div>
 
     <script>
         // Keep track of last fetched timestamp
@@ -340,6 +394,150 @@
         const modalImg = document.getElementById('modalImage');
         const container = document.getElementById('chartContainer');
         const loadedImages = {};
+        const pageTextContainer = document.getElementById('pageText');
+
+        // Object to store parsed page texts
+        let pageTexts = {};
+
+        // Function to fetch and parse text.txt
+        async function fetchAndParseText() {
+            try {
+                const response = await fetch('text.txt');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch text.txt');
+                }
+                const text = await response.text();
+                parseText(text);
+                console.log('text.txt fetched and parsed successfully.');
+            } catch (error) {
+                console.error('Error fetching or parsing text.txt:', error);
+            }
+        }
+
+        // Function to parse the fetched text into pages
+        function parseText(text) {
+            // Use a regex that matches "Page [number] — [Title]"
+            // The dash can be -, –, or —
+            const pageHeaderRegex = /^Page\s+(\d+)\s+[—\-–]\s+(.+)$/i;
+
+            const lines = text.split(/\r?\n/);
+            let currentPageNumber = null;
+            let currentPageContent = [];
+            pageTexts = {}; // Reset in case of multiple parses
+
+            lines.forEach((line, index) => {
+                const headerMatch = line.match(pageHeaderRegex);
+                if (headerMatch) {
+                    // If there was a previous page, save its content
+                    if (currentPageNumber !== null) {
+                        pageTexts[currentPageNumber] = parseMarkdown(currentPageContent.join('\n').trim());
+                        console.log(`Parsed content for Page ${currentPageNumber}`);
+                    }
+                    // Start a new page
+                    currentPageNumber = parseInt(headerMatch[1]);
+                    console.log(`Detected Page ${currentPageNumber}: ${headerMatch[2]}`);
+                    currentPageContent = []; // Reset content for the new page
+                } else {
+                    if (currentPageNumber !== null) {
+                        currentPageContent.push(line);
+                    } else {
+                        console.warn(`Line ${index + 1} is outside any page: "${line}"`);
+                    }
+                }
+            });
+
+            // After looping, save the last page's content
+            if (currentPageNumber !== null && currentPageContent.length > 0) {
+                pageTexts[currentPageNumber] = parseMarkdown(currentPageContent.join('\n').trim());
+                console.log(`Parsed content for Page ${currentPageNumber}`);
+            }
+
+            // Log the number of pages parsed
+            console.log(`Total pages parsed: ${Object.keys(pageTexts).length}`);
+        }
+
+        // Improved Markdown Parser
+        function parseMarkdown(markdownText) {
+            const lines = markdownText.split(/\r?\n/);
+            let html = '';
+            let inList = false;
+            let listType = ''; // 'ul' or 'ol'
+
+            lines.forEach(line => {
+                const trimmedLine = line.trim();
+
+                // Detect headings based on markdown syntax (e.g., #, ##, ###)
+                const headingMatch = trimmedLine.match(/^(#{1,6})\s+(.*)$/);
+                if (headingMatch) {
+                    const level = Math.min(headingMatch[1].length + 1, 6); // Start from <h2>
+                    const content = headingMatch[2];
+                    html += `<h${level}>${content}</h${level}>\n`;
+                    return;
+                }
+
+                // Detect unordered list items (*, -, +)
+                const ulMatch = trimmedLine.match(/^[-*+]\s+(.*)$/);
+                if (ulMatch) {
+                    const listItem = ulMatch[1];
+                    if (!inList || listType !== 'ul') {
+                        inList = true;
+                        listType = 'ul';
+                        html += `<ul>\n`;
+                    }
+                    html += `  <li>${listItem}</li>\n`;
+                    return;
+                }
+
+                // Detect ordered list items (1., 2., etc.)
+                const olMatch = trimmedLine.match(/^\d+\.\s+(.*)$/);
+                if (olMatch) {
+                    const listItem = olMatch[1];
+                    if (!inList || listType !== 'ol') {
+                        inList = true;
+                        listType = 'ol';
+                        html += `<ol>\n`;
+                    }
+                    html += `  <li>${listItem}</li>\n`;
+                    return;
+                }
+
+                // Empty line indicates a new paragraph or end of list
+                if (trimmedLine === '') {
+                    if (inList) {
+                        inList = false;
+                        html += `</${listType}>\n`;
+                        listType = '';
+                    }
+                    return;
+                }
+
+                // Regular paragraph
+                if (inList) {
+                    inList = false;
+                    html += `</${listType}>\n`;
+                    listType = '';
+                }
+                html += `<p>${trimmedLine}</p>\n`;
+            });
+
+            // Close any unclosed list
+            if (inList) {
+                html += `</${listType}>\n`;
+            }
+
+            return html;
+        }
+
+        // Function to display page text
+        function displayPageText(pageNumber) {
+            if (pageTexts[pageNumber]) {
+                pageTextContainer.innerHTML = pageTexts[pageNumber];
+                console.log(`Displayed text for page ${pageNumber}`);
+            } else {
+                pageTextContainer.innerHTML = '<p>No additional information available for this page.</p>';
+                console.warn(`No text found for page ${pageNumber}`);
+            }
+        }
 
         // Preload Images to Improve Performance
         async function preloadImages() {
@@ -500,7 +698,7 @@
             }
         }
 
-        // Render Charts Based on Selected Page
+        // Render Charts and Page Text Based on Selected Page
         function renderPage(pageNumber) {
             console.log(`Rendering page ${pageNumber}: ${pageConfigs[pageNumber].title}`);
             const config = pageConfigs[pageNumber];
@@ -544,6 +742,9 @@
                     openModal(index);
                 });
             });
+
+            // Display Page Text
+            displayPageText(pageNumber);
         }
 
         // Open Modal with Selected Chart
@@ -709,6 +910,8 @@
             console.log('DOM fully loaded and parsed. Initializing application...');
             // First fetch time and the new chart titles
             await displayUpdateTime();
+            // Fetch and parse text.txt
+            await fetchAndParseText();
             // Then preload images
             await preloadImages();
             // Finally render
