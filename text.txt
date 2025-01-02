@@ -1,0 +1,100 @@
+
+
+
+Page 1 — Featured Chart
+
+
+
+# Site Overview
+This site keeps up-to-date charts of three models:
+- A standard power law chart.
+- A Quantiles version of the power law.
+- A Days Ahead version of the power law.
+
+You can learn more about the models by going to their pages.
+
+
+## Bitcoin’s 4 Year Cycles
+Bitcoin tends to follow a four year cycle. The orange line you see on the chart is tracing out the current cycle. The pastel green, purple, and blue lines are “ghosts” of the earlier cycles.
+
+## Using This Site
+- This site was not intended for mobile devices. It's only been tested on computers.
+- Navigate between the pages with the green buttons
+- Click on a chart to see an enlarged version, click again to shrink it.
+- Please use but don’t abuse this site. Refreshing over and over won’t do anything except use up bandwidth.
+- THE CURRENT PRICE IS NOT UPDATED IN REAL TIME. You should expect that the price can be up to a few hours old, due to the way GitHub Actions work.
+- When there is new price data available, you’ll see a REFRESH button. Go ahead and click on it to get newer data.
+
+
+## Not Investment Advice
+This site should not be considered investment advice.
+
+
+## About This Site
+The GitHub website is here:
+https://github.com/nosredna-btc/btc-cycle-charts
+
+This is a free site that uses GitHub Pages and Actions. Github Actions cron jobs do not always trigger often, so the data from this site may not be fresh. I don’t believe that should make a difference to anyone, since this is by no means a day trader’s tool. This is for people interested in comparing the current bitcoin cycle to previous ones.
+
+
+
+Page 2 — Power Law Charts
+
+
+
+# Power Law Model
+
+This model uses the popular Power Law. Bitcoin has tended to follow a power law relation throughout its history.
+
+This model uses a power law equation as the support line. The upper bounds line has exponential falloff (meaning that bitcoin’s peaks have gotten lower each cycle).
+
+The ghost lines are adjusted to conform to this cycle’s boundaries.
+
+This model is the most conservative model.
+
+Four year, two year, and one year charts are provided. Click on a chart to enlarge it.
+
+
+
+Page 3 — Quantiles Charts
+
+
+
+# Quantiles Model
+
+This model has different equations for the support and upper bounds. The curve fitting was done to fit only the very topmost and bottommost points.
+
+This model ended up ignoring the top of Cycle 3 because it did not contain any of the topmost points. Cycle 3 had two peaks, but neither were as high as we might have expected based on Cycles 1 and 2.
+
+The ghost lines are adjusted to conform to this cycle’s boundaries.
+
+This model is more aggressive than the Power Law model.
+
+Four year, two year, and one year charts are provided. Click on a chart to enlarge it.
+
+
+
+Page 4 — Days Above Charts
+
+
+
+# Days Above Model
+
+This model uses the Power Law support line, but there is no upper bounds line. Instead, the lines track the number of days ahead of the support line the price is.
+
+The ghost lines are adjusted to conform to this cycle’s boundaries.
+
+This model is more aggressive than the Power Law model.
+
+Four year, two year, and one year charts are provided. Click on a chart to enlarge it.
+
+
+
+Page 5 — All Charts
+
+
+# All Charts
+
+This page has all three charts for all three models. It’s useful when you want to compare the models against each other.
+
+Four year, two year, and one year charts are provided. Click on a chart to enlarge it.
