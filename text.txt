@@ -8,7 +8,11 @@ This site keeps up-to-date charts of three models:
 You can learn more about the models by going to their pages.
 
 ## Bitcoin’s 4 Year Cycles
-Bitcoin tends to follow a four year cycle. The orange line you see on the chart is tracing out the current cycle. The pastel green, purple, and blue lines are “ghosts” of the earlier cycles.
+Bitcoin tends to follow a four year cycle. The orange line you see on the chart is tracing out the current cycle. Take a good look at the chart above. The pastel green, purple, and blue lines are “ghosts” of the earlier cycles.
+
+You can also see that most years bitcoin goes up. But once every four years it has gone down. 2025 is the next expected down year.
+
+You can see the same information in this chart which color codes the years.
 ![Cycles chart](assets/cycle.png)
 
 ## Using This Site
