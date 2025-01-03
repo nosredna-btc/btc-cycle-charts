@@ -110,7 +110,7 @@
             box-shadow: var(--box-shadow);
             width: var(--chart-width);
             height: var(--chart-height);
-            cursor: pointer; /* Already shows pointer on hover */
+            cursor: pointer;
             transition: box-shadow var(--transition-speed);
             display: flex;
             flex-direction: column;
@@ -202,7 +202,6 @@
 
         /* Responsive Adjustments */
         @media (max-width: 768px) {
-            /* Only apply to non-single-chart views */
             .charts-grid:not(.single-chart) .chart-item,
             .charts-grid:not(.single-chart) .chart-wrapper {
                 width: 100%;
@@ -227,7 +226,6 @@
 
         #refreshButton {
             animation: pulse 2s infinite;
-            /* Additional styles for smoothness */
             transition: transform 0.2s ease, opacity 0.2s ease, color 0.3s ease;
             color: var(--refresh-button-color);
             background: none;
@@ -254,6 +252,12 @@
             margin-left: auto;
             margin-right: auto;
             line-height: 1.6;
+        }
+
+        /* Ensure images never exceed 75% width; default left align or center via JS. */
+        #pageText img {
+            max-width: 75%;
+            height: auto;
         }
 
         /* Additional Styles for Parsed Content */
@@ -464,27 +468,58 @@
             console.log(`Total pages parsed: ${Object.keys(pageTexts).length}`);
         }
 
-        // Improved Markdown Parser with minimal image & link support
+        // Improved Markdown Parser
         function parseMarkdown(markdownText) {
             const lines = markdownText.split(/\r?\n/);
             let html = '';
             let inList = false;
             let listType = ''; // 'ul' or 'ol'
+            let inTable = false;
 
-            lines.forEach(line => {
-                const trimmedLine = line.trim();
+            lines.forEach((line) => {
+                let processedLine = line.trim();
 
-                // 1. Replace inline images and links first
-                //    Syntax:
-                //    - Image: ![alt text](url)
-                //    - Link:  [link text](url)
-                let processedLine = trimmedLine
-                    // images
-                    .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1">')
-                    // links
-                    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>');
+                // Handle tables
+                if (processedLine.startsWith('|') && processedLine.endsWith('|')) {
+                    const cells = processedLine.split('|').slice(1, -1).map(cell => cell.trim());
+                    if (!inTable) {
+                        html += '<table>\n';
+                        inTable = true;
+                    }
 
-                // 2. Detect headings (#, ##, ###, etc.)
+                    // Header row separator (---)
+                    if (cells.every(cell => /^-+$/.test(cell))) {
+                        html += '<thead>\n<tr>';
+                        html += cells.map(() => '<th></th>').join('');
+                        html += '</tr>\n</thead>\n<tbody>\n';
+                    } else {
+                        const rowTag = html.includes('<thead>') ? 'td' : 'th';
+                        html += `<tr>${cells.map(cell => `<${rowTag}>${cell}</${rowTag}>`).join('')}</tr>\n`;
+                    }
+                    return;
+                }
+
+                // End table if needed
+                if (inTable) {
+                    html += '</tbody>\n</table>\n';
+                    inTable = false;
+                }
+
+                // Inline formatting
+                processedLine = processedLine
+                    .replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>') // Bold + Italic with ***
+                    .replace(/___(.*?)___/g, '<strong><em>$1</em></strong>')       // Bold + Italic with ___
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')             // Bold with **
+                    .replace(/__(.*?)__/g, '<strong>$1</strong>')                 // Bold with __
+                    .replace(/\*(.*?)\*/g, '<em>$1</em>')                        // Italic with *
+                    .replace(/_(.*?)_/g, '<em>$1</em>');                         // Italic with _
+
+                // Replace inline images and links
+                processedLine = processedLine
+                    .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1">') // Images
+                    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>');     // Links
+
+                // Detect headings (#, ##, ###, etc.)
                 const headingMatch = processedLine.match(/^(#{1,6})\s+(.*)$/);
                 if (headingMatch) {
                     const level = Math.min(headingMatch[1].length + 1, 6); // Start from <h2>
@@ -493,7 +528,7 @@
                     return;
                 }
 
-                // 3. Detect unordered list items (*, -, +)
+                // Detect unordered list items (*, -, +)
                 const ulMatch = processedLine.match(/^[-*+]\s+(.*)$/);
                 if (ulMatch) {
                     const listItem = ulMatch[1];
@@ -506,7 +541,7 @@
                     return;
                 }
 
-                // 4. Detect ordered list items (1., 2., etc.)
+                // Detect ordered list items (1., 2., etc.)
                 const olMatch = processedLine.match(/^\d+\.\s+(.*)$/);
                 if (olMatch) {
                     const listItem = olMatch[1];
@@ -519,7 +554,7 @@
                     return;
                 }
 
-                // 5. Empty line => end of list or new paragraph
+                // Empty line => end of list or new paragraph
                 if (processedLine === '') {
                     if (inList) {
                         inList = false;
@@ -529,9 +564,8 @@
                     return;
                 }
 
-                // 6. Regular paragraph
+                // Regular paragraph
                 if (inList) {
-                    // Close any open list before starting a paragraph
                     inList = false;
                     html += `</${listType}>\n`;
                     listType = '';
@@ -539,23 +573,43 @@
                 html += `<p>${processedLine}</p>\n`;
             });
 
-            // Close any unclosed list at the end
-            if (inList) {
-                html += `</${listType}>\n`;
-            }
+            // Close any unclosed list or table at the end
+            if (inList) html += `</${listType}>\n`;
+            if (inTable) html += '</tbody>\n</table>\n';
 
             return html;
+        }
+
+        // ---- NEW FUNCTION: Align images after the #pageText is updated ----
+        function handleImagesInPageText() {
+            const container = document.getElementById('pageText');
+            const images = container.querySelectorAll('img');
+            images.forEach(img => {
+                // Wait for the image’s natural width to be known
+                img.addEventListener('load', () => {
+                    const containerWidth = container.clientWidth;
+                    if (img.naturalWidth > containerWidth) {
+                        // Large image => center it
+                        img.style.display = 'block';
+                        img.style.margin = '0 auto';
+                    } else {
+                        // Small image => left align
+                        img.style.display = 'inline-block';
+                        img.style.margin = '0';
+                    }
+                });
+            });
         }
 
         // Function to display page text
         function displayPageText(pageNumber) {
             if (pageTexts[pageNumber]) {
                 pageTextContainer.innerHTML = pageTexts[pageNumber];
-                console.log(`Displayed text for page ${pageNumber}`);
             } else {
                 pageTextContainer.innerHTML = '<p>No additional information available for this page.</p>';
-                console.warn(`No text found for page ${pageNumber}`);
             }
+            // Align images after the DOM update
+            handleImagesInPageText();
         }
 
         // Preload Images to Improve Performance
@@ -572,7 +626,7 @@
                     };
                     img.onerror = (error) => {
                         console.error(`Error loading image: ${chart.path}`, error);
-                        resolve(); // Resolve even on error to continue loading other images
+                        resolve();
                     };
                 }).then(() => {
                     loadedImages[id] = `${chart.path}?v=${timestamp}`;
@@ -586,7 +640,6 @@
         async function displayUpdateTime() {
             console.log('Fetching chart update information...');
             try {
-                // Add a cache-busting query parameter to ensure fresh data is fetched
                 const response = await fetch(`charts/chart_info.json?v=${Date.now()}`);
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
@@ -594,15 +647,11 @@
                 console.log('Chart update information fetched successfully.');
                 const data = await response.json();
 
-                // Extract timestamp
                 const gmtTimestamp = data.timestamp_gmt;
-
-                // Only set updateTime on initial load
                 if (!previousTimestamp) {
                     if (gmtTimestamp) {
                         const dateObj = new Date(gmtTimestamp);
                         if (!isNaN(dateObj)) {
-                            // Format: "31 Dec 2024 3:48 AM"
                             const formattedDate = dateObj.toLocaleString('en-GB', {
                                 day: '2-digit',
                                 month: 'short',
@@ -611,7 +660,6 @@
                                 minute: '2-digit',
                                 hour12: true
                             }).replace(',', '');
-
                             document.getElementById('updateTime').innerText =
                                 `Charts up to date as of ${formattedDate}`;
                             previousTimestamp = gmtTimestamp;
@@ -621,15 +669,11 @@
                 } else if (gmtTimestamp && gmtTimestamp !== previousTimestamp) {
                     newTimestamp = gmtTimestamp;
                     const updateTimeElement = document.getElementById('updateTime');
-
-                    // Prevent multiple REFRESH buttons
                     if (!updateTimeElement.querySelector('#refreshButton')) {
                         console.log('New update available. Displaying REFRESH button.');
-                        // Create a new button with small/light styling
                         const refreshButton = document.createElement('button');
                         refreshButton.id = 'refreshButton';
                         refreshButton.innerText = 'REFRESH';
-                        // Update inline styles to match CSS
                         refreshButton.style.fontSize = '12px';
                         refreshButton.style.background = 'none';
                         refreshButton.style.border = 'none';
@@ -638,7 +682,6 @@
                         refreshButton.style.color = 'var(--refresh-button-color)';
                         refreshButton.style.animation = 'pulse 2s infinite';
 
-                        // Clicking this button removes it, updates time, reloads images, and re-renders
                         refreshButton.addEventListener('click', async () => {
                             console.log('REFRESH button clicked.');
                             refreshButton.remove();
@@ -647,7 +690,6 @@
                             if (newTimestamp) {
                                 const dateObj = new Date(newTimestamp);
                                 if (!isNaN(dateObj)) {
-                                    // Format: "31 Dec 2024 3:48 AM"
                                     const formattedDate = dateObj.toLocaleString('en-GB', {
                                         day: '2-digit',
                                         month: 'short',
@@ -656,7 +698,6 @@
                                         minute: '2-digit',
                                         hour12: true
                                     }).replace(',', '');
-
                                     document.getElementById('updateTime').innerText =
                                         `Charts up to date as of ${formattedDate}`;
                                     console.log(`Update time updated to: ${formattedDate}`);
@@ -664,46 +705,36 @@
                                     newTimestamp = null;
                                 }
                             }
-
-                            // Reload images and re-render the page
                             console.log('Reloading images due to REFRESH.');
                             await preloadImages();
                             console.log('Images reloaded. Re-rendering page.');
                             renderPage(currentPage);
 
-                            // Restart polling
                             console.log('Restarting polling for updates.');
                             startEnhancedPolling();
                         });
 
-                        // Append the button after the update time text
                         updateTimeElement.appendChild(refreshButton);
                         console.log('REFRESH button appended to updateTime element.');
-
-                        // Stop polling since REFRESH is now visible
                         stopEnhancedPolling();
                         console.log('Polling stopped due to new update availability.');
                     }
                 }
 
-                // Override the 9 price chart captions with data from the JSON
                 if (data.chart_titles) {
                     const { powerlaw, quantiles, ghostly_days } = data.chart_titles;
-                    // For powerlaw price charts
                     if (powerlaw && powerlaw.length >= 3) {
                         chartData.powerlaw_chart1.caption = powerlaw[0];
                         chartData.powerlaw_chart2.caption = powerlaw[1];
                         chartData.powerlaw_chart3.caption = powerlaw[2];
                         console.log('Power Law chart captions updated from JSON.');
                     }
-                    // For quantiles price charts
                     if (quantiles && quantiles.length >= 3) {
                         chartData.quantiles_chart1.caption = quantiles[0];
                         chartData.quantiles_chart2.caption = quantiles[1];
                         chartData.quantiles_chart3.caption = quantiles[2];
                         console.log('Quantiles chart captions updated from JSON.');
                     }
-                    // For ghostly_days price charts
                     if (ghostly_days && ghostly_days.length >= 3) {
                         chartData.ghostly_days_chart1.caption = ghostly_days[0];
                         chartData.ghostly_days_chart2.caption = ghostly_days[1];
@@ -713,7 +744,6 @@
                 }
             } catch (error) {
                 console.error('Error fetching or parsing chart_info.json:', error);
-                // Do not change the updateTime; leave it as is
             }
         }
 
@@ -722,6 +752,7 @@
             console.log(`Rendering page ${pageNumber}: ${pageConfigs[pageNumber].title}`);
             const config = pageConfigs[pageNumber];
             const isSingleChart = pageNumber === 1;
+
             container.innerHTML = `
                 <h2>${config.title}</h2>
                 <div class="charts-grid ${isSingleChart ? 'single-chart' : ''}">
@@ -839,13 +870,9 @@
 
         // Enhanced Polling Mechanism to Handle Sleep/Wake
         (function() {
-            // Define the polling interval (10 minutes in milliseconds)
-            const POLLING_INTERVAL = 10 * 60 * 1000; // 600,000 ms
-
-            // Track the next scheduled poll time
+            const POLLING_INTERVAL = 10 * 60 * 1000; // 10 minutes
             let nextPollTime = Date.now() + POLLING_INTERVAL;
 
-            // Reference to the polling function
             const pollFunction = async () => {
                 const currentTime = Date.now();
                 if (currentTime >= nextPollTime) {
@@ -857,27 +884,21 @@
                 scheduleNextPoll();
             };
 
-            // Schedule the next poll using setTimeout based on the exact time remaining
             const scheduleNextPoll = () => {
                 const currentTime = Date.now();
                 const timeUntilNextPoll = nextPollTime - currentTime;
 
                 if (timeUntilNextPoll <= 0) {
-                    // If the time has already passed, poll immediately
                     console.log('Time for next poll has passed. Polling immediately.');
                     pollFunction();
                 } else {
-                    // Calculate remaining time in minutes and seconds
                     const minutes = Math.floor(timeUntilNextPoll / 60000);
                     const seconds = Math.floor((timeUntilNextPoll % 60000) / 1000);
                     console.log(`Time remaining until next poll: ${minutes} minute(s) and ${seconds} second(s).`);
-
-                    // Use setTimeout to schedule the next poll
                     setTimeout(pollFunction, timeUntilNextPoll);
                 }
             };
 
-            // Handle visibility changes
             const handleVisibilityChange = () => {
                 if (document.visibilityState === 'visible') {
                     console.log('Page became visible. Checking if poll needs to be triggered.');
@@ -886,7 +907,6 @@
                         console.log('Scheduled poll time has passed while the page was hidden. Polling now.');
                         pollFunction();
                     } else {
-                        // Optionally, log the remaining time when the page becomes visible
                         const timeUntilNextPoll = nextPollTime - currentTime;
                         const minutes = Math.floor(timeUntilNextPoll / 60000);
                         const seconds = Math.floor((timeUntilNextPoll % 60000) / 1000);
@@ -895,16 +915,10 @@
                 }
             };
 
-            // Listen for visibility changes
             document.addEventListener('visibilitychange', handleVisibilityChange);
-
-            // Optionally, listen for window focus events as a fallback
             window.addEventListener('focus', handleVisibilityChange);
-
-            // Start the initial poll schedule
             scheduleNextPoll();
 
-            // Functions to control the enhanced polling (used when REFRESH is clicked)
             window.startEnhancedPolling = () => {
                 console.log('Enhanced polling started.');
                 nextPollTime = Date.now() + POLLING_INTERVAL;
@@ -913,11 +927,9 @@
 
             window.stopEnhancedPolling = () => {
                 console.log('Enhanced polling stopped.');
-                // Clear any existing timeouts by resetting nextPollTime
                 nextPollTime = Infinity;
             };
 
-            // Optional: Clean up event listeners when the page is unloaded
             window.addEventListener('beforeunload', () => {
                 document.removeEventListener('visibilitychange', handleVisibilityChange);
                 window.removeEventListener('focus', handleVisibilityChange);
@@ -927,15 +939,10 @@
         // Initialize the Page
         window.addEventListener('DOMContentLoaded', async () => {
             console.log('DOM fully loaded and parsed. Initializing application...');
-            // First fetch time and the new chart titles
             await displayUpdateTime();
-            // Fetch and parse text.txt
             await fetchAndParseText();
-            // Then preload images
             await preloadImages();
-            // Finally render
             renderPage(currentPage);
-            // Start polling using the enhanced mechanism
             startEnhancedPolling();
             console.log('Application initialized successfully.');
         });
