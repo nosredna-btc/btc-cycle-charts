@@ -1,9 +1,9 @@
 Page 1 — Featured Chart
 # Site Overview
 This site keeps up-to-date charts of three models:
-- A standard power law chart.
-- A Quantiles version of the power law.
-- A Days Ahead version of the power law.
+1. A standard power law chart.
+2. A Quantiles version of the power law.
+3. A Days Ahead version of the power law.
 
 You can learn more about the models by going to their pages.
 
@@ -15,13 +15,11 @@ Bitcoin tends to follow a four year cycle. The orange line you see on the chart 
 - Navigate between the pages with the green buttons
 - Click on a chart to see an enlarged version, click again to shrink it.
 - Please use but don’t abuse this site. Refreshing over and over won’t do anything except use up bandwidth.
-- THE CURRENT PRICE IS NOT UPDATED IN REAL TIME. You should expect that the price can be up to a few hours old, due to the way GitHub Actions work.
+- **The current price is not updated in real time.** You should expect that the price can be up to a few hours old, due to the way GitHub Actions work.
 - When there is new price data available, you’ll see a REFRESH button. Go ahead and click on it to get newer data.
 
-
 ## Not Investment Advice
-This site should not be considered investment advice.
-
+This site should not be considered investment advice
 
 ## About This Site
 The GitHub website is here:
@@ -54,6 +52,9 @@ The ghost lines are adjusted to conform to this cycle’s boundaries.
 This model is more aggressive than the Power Law model.
 
 Four year, two year, and one year charts are provided. Click on a chart to enlarge it.
+
+In the image below, you can see how different quantile curves approximate the top, middle, and bottom of the bitcoin price history.
+![Quantiles chart](assets/quantiles.png)
 
 Page 4 — Days Above Charts
 # Days Above Model
