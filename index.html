@@ -82,6 +82,13 @@
             background-color: var(--nav-button-hover-bg);
         }
 
+        /* If you want to specifically target .nav-button and .chart-item, you can do: */
+        .nav-button:hover,
+        .chart-item:hover,
+        #refreshButton:hover {
+            cursor: pointer;
+        }
+
         .nav-button.active {
             background-color: var(--nav-button-active-bg);
         }
@@ -103,7 +110,7 @@
             box-shadow: var(--box-shadow);
             width: var(--chart-width);
             height: var(--chart-height);
-            cursor: pointer;
+            cursor: pointer; /* Already shows pointer on hover */
             transition: box-shadow var(--transition-speed);
             display: flex;
             flex-direction: column;
@@ -225,7 +232,7 @@
             color: var(--refresh-button-color);
             background: none;
             border: none;
-            cursor: pointer;
+            cursor: pointer; 
             margin-left: 8px;
             font-size: 12px;
             padding: 0;
@@ -399,10 +406,11 @@
         // Object to store parsed page texts
         let pageTexts = {};
 
-        // Function to fetch and parse text.txt
+        // Function to fetch and parse text.txt with cache busting
         async function fetchAndParseText() {
             try {
-                const response = await fetch('text.txt');
+                const cacheBuster = `v=${Date.now()}`;
+                const response = await fetch(`text.txt?${cacheBuster}`);
                 if (!response.ok) {
                     throw new Error('Failed to fetch text.txt');
                 }
@@ -456,7 +464,7 @@
             console.log(`Total pages parsed: ${Object.keys(pageTexts).length}`);
         }
 
-        // Improved Markdown Parser
+        // Improved Markdown Parser with minimal image & link support
         function parseMarkdown(markdownText) {
             const lines = markdownText.split(/\r?\n/);
             let html = '';
@@ -466,8 +474,18 @@
             lines.forEach(line => {
                 const trimmedLine = line.trim();
 
-                // Detect headings based on markdown syntax (e.g., #, ##, ###)
-                const headingMatch = trimmedLine.match(/^(#{1,6})\s+(.*)$/);
+                // 1. Replace inline images and links first
+                //    Syntax:
+                //    - Image: ![alt text](url)
+                //    - Link:  [link text](url)
+                let processedLine = trimmedLine
+                    // images
+                    .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1">')
+                    // links
+                    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>');
+
+                // 2. Detect headings (#, ##, ###, etc.)
+                const headingMatch = processedLine.match(/^(#{1,6})\s+(.*)$/);
                 if (headingMatch) {
                     const level = Math.min(headingMatch[1].length + 1, 6); // Start from <h2>
                     const content = headingMatch[2];
@@ -475,8 +493,8 @@
                     return;
                 }
 
-                // Detect unordered list items (*, -, +)
-                const ulMatch = trimmedLine.match(/^[-*+]\s+(.*)$/);
+                // 3. Detect unordered list items (*, -, +)
+                const ulMatch = processedLine.match(/^[-*+]\s+(.*)$/);
                 if (ulMatch) {
                     const listItem = ulMatch[1];
                     if (!inList || listType !== 'ul') {
@@ -488,8 +506,8 @@
                     return;
                 }
 
-                // Detect ordered list items (1., 2., etc.)
-                const olMatch = trimmedLine.match(/^\d+\.\s+(.*)$/);
+                // 4. Detect ordered list items (1., 2., etc.)
+                const olMatch = processedLine.match(/^\d+\.\s+(.*)$/);
                 if (olMatch) {
                     const listItem = olMatch[1];
                     if (!inList || listType !== 'ol') {
@@ -501,8 +519,8 @@
                     return;
                 }
 
-                // Empty line indicates a new paragraph or end of list
-                if (trimmedLine === '') {
+                // 5. Empty line => end of list or new paragraph
+                if (processedLine === '') {
                     if (inList) {
                         inList = false;
                         html += `</${listType}>\n`;
@@ -511,16 +529,17 @@
                     return;
                 }
 
-                // Regular paragraph
+                // 6. Regular paragraph
                 if (inList) {
+                    // Close any open list before starting a paragraph
                     inList = false;
                     html += `</${listType}>\n`;
                     listType = '';
                 }
-                html += `<p>${trimmedLine}</p>\n`;
+                html += `<p>${processedLine}</p>\n`;
             });
 
-            // Close any unclosed list
+            // Close any unclosed list at the end
             if (inList) {
                 html += `</${listType}>\n`;
             }
