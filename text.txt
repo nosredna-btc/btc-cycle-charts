@@ -18,12 +18,15 @@ Bitcoin tends to follow a four year cycle. The orange line you see on the chart 
 - THE CURRENT PRICE IS NOT UPDATED IN REAL TIME. You should expect that the price can be up to a few hours old, due to the way GitHub Actions work.
 - When there is new price data available, you’ll see a REFRESH button. Go ahead and click on it to get newer data.
 
+
 ## Not Investment Advice
 This site should not be considered investment advice.
 
+
 ## About This Site
 The GitHub website is here:
-https://github.com/nosredna-btc/btc-cycle-charts
+
+[github.com/nosredna-btc/btc-cycle-charts](https://github.com/nosredna-btc/btc-cycle-charts)
 
 This is a free site that uses GitHub Pages and Actions. Github Actions cron jobs do not always trigger often, so the data from this site may not be fresh. I don’t believe that should make a difference to anyone, since this is by no means a day trader’s tool. This is for people interested in comparing the current bitcoin cycle to previous ones.
 
@@ -41,6 +44,7 @@ Four year, two year, and one year charts are provided. Click on a chart to enlar
 
 Page 3 — Quantiles Charts
 # Quantiles Model
+
 This model has different equations for the support and upper bounds. The curve fitting was done to fit only the very topmost and bottommost points.
 
 This model ended up ignoring the top of Cycle 3 because it did not contain any of the topmost points. Cycle 3 had two peaks, but neither were as high as we might have expected based on Cycles 1 and 2.
