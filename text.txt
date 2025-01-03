@@ -9,7 +9,7 @@ You can learn more about the models by going to their pages.
 
 ## Bitcoin’s 4 Year Cycles
 Bitcoin tends to follow a four year cycle. The orange line you see on the chart is tracing out the current cycle. The pastel green, purple, and blue lines are “ghosts” of the earlier cycles.
-![Cycles chart](assets/cycles.png)
+![Cycles chart](assets/cycle.png)
 
 ## Using This Site
 - This site was not intended for mobile devices. It's only been tested on computers.
