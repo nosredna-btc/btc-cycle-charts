@@ -83,8 +83,8 @@ In the image below, you can see how different quantile curves approximate the to
 
 
 
-Page 4 — Days Above Charts
-# Days Above Model
+Page 4 — Days Ahead Charts
+# Days Ahead Model
 This model uses the Power Law support line, but there is no upper bounds line. Instead, the lines track the number of days ahead of the support line the price is.
 
 The ghost lines are adjusted to conform to this cycle’s boundaries.
