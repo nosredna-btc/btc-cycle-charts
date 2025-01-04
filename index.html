@@ -322,6 +322,8 @@
 
         async function refreshPage() {
             console.log('Reloading images...');
+            // Re-fetch chart_info.json here so we always have the newest data
+            await displayUpdateTime();
             await preloadImages();
             console.log('Images reloaded. Re-rendering page.');
             renderPage(currentPage);
