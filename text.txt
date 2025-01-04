@@ -93,6 +93,9 @@ This model is more aggressive than the Power Law model.
 
 Four year, two year, and one year charts are provided. Click on a chart to enlarge it.
 
+
+
+
 Page 5 — All Charts
 # All Charts
 This page has all three charts for all three models. It’s useful when you want to compare the models against each other.
