@@ -35,17 +35,34 @@ The GitHub website is here:
 
 This is a free site that uses GitHub Pages and Actions. Github Actions cron jobs do not always trigger often, so the data from this site may not be fresh. I don’t believe that should make a difference to anyone, since this is by no means a day trader’s tool. This is for people interested in comparing the current bitcoin cycle to previous ones.
 
+
+
+
 Page 2 — Power Law Charts
 # Power Law Model
 This model uses the popular Power Law. Bitcoin has tended to follow a power law relation throughout its history.
 
-This model uses a power law equation as the support line. The upper bounds line has exponential falloff (meaning that bitcoin’s peaks have gotten lower each cycle).
+Here is a chart that shows how well bitcoin has followed a power law support line.
+![Support chart](assets/support.png)
+This "Bitcoin Support" chart is a "log/linear" chart, meaning the left labels are displayed logarithmically, which is the most common way to display the prices of investments over long time periods because it shows percentage changes correctly across the history of the investment.
 
-The ghost lines are adjusted to conform to this cycle’s boundaries.
+Why does the price droop? It's because the gains in bitcoins early history were much larger. Bitcoin's gains are slowing down, but slowly. This chart shows what we can expect from bitcoin over time, if the power law holds up.
+
+![Falloff chart](assets/falloff.png)
+
+
+## About This Model
+
+The Power Law Model, as its name says, uses a power law equation as the support line. The upper bounds line has exponential falloff (meaning that bitcoin’s peaks have gotten lower each cycle).
+
+Four different cycles are displayed on this chart. The dates and prices match the current cycle. The other lines are "ghosts which have been adjusted to conform to this cycle’s boundaries.
 
 This model is the most conservative model.
 
 Four year, two year, and one year charts are provided. Click on a chart to enlarge it.
+
+
+
 
 Page 3 — Quantiles Charts
 # Quantiles Model
@@ -62,6 +79,9 @@ Four year, two year, and one year charts are provided. Click on a chart to enlar
 
 In the image below, you can see how different quantile curves approximate the top, middle, and bottom of the bitcoin price history.
 ![Quantiles chart](assets/quantiles.png)
+
+
+
 
 Page 4 — Days Above Charts
 # Days Above Model
