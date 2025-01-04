@@ -648,20 +648,21 @@
                 const data = await response.json();
 
                 const gmtTimestamp = data.timestamp_gmt;
+                const price = data.current_price.toFixed(2); // Format price to 2 decimal places
                 if (!previousTimestamp) {
                     if (gmtTimestamp) {
                         const dateObj = new Date(gmtTimestamp);
                         if (!isNaN(dateObj)) {
                             const formattedDate = dateObj.toLocaleString('en-GB', {
-                                day: '2-digit',
+                                day: 'numeric',
                                 month: 'short',
                                 year: 'numeric',
                                 hour: 'numeric',
                                 minute: '2-digit',
                                 hour12: true
                             }).replace(',', '');
-                            document.getElementById('updateTime').innerText =
-                                `Charts up to date as of ${formattedDate}`;
+                            document.getElementById('updateTime').innerHTML =
+                                `Bitcoin price is <strong>${price}</strong> as of <strong>${formattedDate}</strong>`;
                             previousTimestamp = gmtTimestamp;
                             console.log(`Update time set to: ${formattedDate}`);
                         }
