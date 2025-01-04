@@ -20,11 +20,11 @@ import json
 
 logger = logging.getLogger(__name__)
 
-def add_bottom_credits(fig, btc_price=None, local_time_str=None, website=None):
+def add_bottom_credits(fig, btc_price=None, time_str_gmt=None, website=None):
     """
     Displays credits (left-aligned) and BTC info (right-aligned) in a single line
     at the bottom of the figure.
-    Now with a smaller font (8) and lower vertical placement (-0.03) to avoid overlap.
+    Using smaller font and a bit lower vertical position to avoid overlap.
     """
     # Left side text (credits)
     left_text = (
@@ -32,31 +32,31 @@ def add_bottom_credits(fig, btc_price=None, local_time_str=None, website=None):
         "@apsk32, @sminston_with, @math_sci_tech"
     )
 
-    # Right side text
-    if btc_price is not None and local_time_str is not None and website is not None:
-        right_text = f"Bitcoin price is {btc_price:,.2f} as of {local_time_str}   {website}"
+    # Right side text: "Bitcoin price is 12345.67 as of 4 Jan 2025 08:33 UTC https://example.com"
+    if btc_price is not None and time_str_gmt is not None and website is not None:
+        right_text = f"Bitcoin price is {btc_price:,.2f} as of {time_str_gmt}   {website}"
     else:
         right_text = ""
 
-    # Smaller font, and a bit further down
+    # Use smaller font, and place it a bit lower
     fig.text(
         0.02,
-        -0.03,  # was -0.02
+        -0.03,  
         left_text,
         ha='left',
         va='bottom',
-        fontsize=8,  # was 10
+        fontsize=8,
         fontweight='normal',
         color='gray'
     )
 
     fig.text(
         0.98,
-        -0.03,  # was -0.02
+        -0.03,  
         right_text,
         ha='right',
         va='bottom',
-        fontsize=8,  # was 10
+        fontsize=8,
         fontweight='normal',
         color='gray'
     )
@@ -337,9 +337,17 @@ def main():
         return combined
 
     def get_btc_data():
+        """
+        Returns: 
+          - current_price (float or None)
+          - current_time (string, ISO8601 in UTC)
+          - last_close (float or None)
+          - last_close_time (string or None)
+        """
         try:
             btc = yf.Ticker("BTC-USD")
             current_price = btc.fast_info['lastPrice']
+            # current_time is in UTC
             current_time = datetime.now(timezone.utc).isoformat()
 
             hist = btc.history(period='5d', interval='1d')
@@ -371,11 +379,11 @@ def main():
     if last_close:
         print(f"Bitcoin's last daily close price ({last_close_time}): {BOLD}{GREEN}${last_close:,.2f}{RESET}")
 
-    # Write minimal info to JSON
+    # Write minimal info to JSON (the chart_info.json file)
     info = {
         "current_price": current_price,
-        "timestamp_gmt": current_time,
-        "chart_titles": chart_titles_map  # remain as-is in JSON (no prefix added here)
+        "timestamp_gmt": current_time,  # keep the UTC ISO string
+        "chart_titles": chart_titles_map  # remain as-is in JSON
     }
 
     json_file_path = os.path.join(os.getcwd(), "charts_dev/chart_info.json")
@@ -419,6 +427,7 @@ def main():
             'Adj Close': [current_price],
             'Volume': [0]
         })
+        # remove any duplicates from the same day
         combined_data = combined_data[combined_data['Start'].dt.date != today.date()]
         combined_data = pd.concat([combined_data, current_row], ignore_index=True)
         combined_data.sort_values(by='Start', inplace=True)
@@ -461,13 +470,16 @@ def main():
     recent = today if today in combined_data['Start'].values else combined_data['Start'].max()
     logger.info(f"Using '{recent.date()}' as the most recent data point.")
 
-    # Convert the UTC current_time string into a local time string for credits
+    # -------------------------------------------------------
+    # Instead of converting to local time, let's keep it UTC:
+    # -------------------------------------------------------
     if current_time:
+        # Convert the ISO8601 string directly to a datetime, remain in UTC
         dt_utc = datetime.fromisoformat(current_time)
-        dt_local = dt_utc.astimezone()  # your system's local tz
-        local_time_str = dt_local.strftime("%d %b %Y %I:%M %p").lstrip('0')
+        # Format e.g. "4 Jan 2025 08:33 UTC"
+        gmt_time_str = dt_utc.strftime("%d %b %Y %H:%M UTC")
     else:
-        local_time_str = ""
+        gmt_time_str = ""
 
     # ------------------------------------
     # 5. Prepare Calculations for Charts
@@ -778,11 +790,11 @@ def main():
             va='bottom'
         )
 
-        # Updated credits (left and right) -- now smaller and lower
+        # Now pass gmt_time_str to our credits function 
         add_bottom_credits(
             fig,
             btc_price=current_price,
-            local_time_str=local_time_str,
+            time_str_gmt=gmt_time_str,  # show "4 Jan 2025 08:33 UTC"
             website="https://nosredna-btc.github.io/btc-cycle-charts"
         )
 
@@ -876,11 +888,11 @@ def main():
             va='bottom'
         )
 
-        # Updated credits (left and right) -- smaller and lower
+        # Credits with GMT time
         add_bottom_credits(
             fig,
             btc_price=current_price,
-            local_time_str=local_time_str,
+            time_str_gmt=gmt_time_str,
             website="https://nosredna-btc.github.io/btc-cycle-charts"
         )
 
@@ -1081,11 +1093,11 @@ def main():
         # Use a smaller legend box for ghostly_days
         add_legend_box(ax, CONFIG["LEGEND_BOX_POSITIONS"]["ghostly_days"])
 
-        # Updated credits (left and right) -- smaller and lower
+        # Add credits with UTC time
         add_bottom_credits(
             fig,
             btc_price=current_price,
-            local_time_str=local_time_str,
+            time_str_gmt=gmt_time_str,
             website="https://nosredna-btc.github.io/btc-cycle-charts"
         )
 
