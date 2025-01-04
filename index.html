@@ -82,7 +82,6 @@
             background-color: var(--nav-button-hover-bg);
         }
 
-        /* If you want to specifically target .nav-button and .chart-item, you can do: */
         .nav-button:hover,
         .chart-item:hover,
         #refreshButton:hover {
@@ -224,6 +223,7 @@
             }
         }
 
+        /* DRY approach: #refreshButton styling is centralized in CSS */
         #refreshButton {
             animation: pulse 2s infinite;
             transition: transform 0.2s ease, opacity 0.2s ease, color 0.3s ease;
@@ -290,7 +290,7 @@
 
     <!-- Update Time Display -->
     <div id="updateTime" style="text-align: center; margin-bottom: 20px; font-size: 16px; color: var(--subtext-color);">
-        Charts up to date as of ...
+        <!-- Filled in by JavaScript -->
     </div>
 
     <!-- Navigation Buttons -->
@@ -309,6 +309,53 @@
     <div id="pageText"></div>
 
     <script>
+        /*******************************************************
+         * 1) DRY HELPER FUNCTIONS
+         *******************************************************/
+        function createRefreshButton() {
+            // Create a button; styling is handled by CSS (#refreshButton)
+            const refreshButton = document.createElement('button');
+            refreshButton.id = 'refreshButton';
+            refreshButton.innerText = 'REFRESH';
+            return refreshButton;
+        }
+
+        async function refreshPage() {
+            console.log('Reloading images...');
+            await preloadImages();
+            console.log('Images reloaded. Re-rendering page.');
+            renderPage(currentPage);
+
+            console.log('Restarting polling for updates.');
+            startEnhancedPolling();
+        }
+
+        function applyChartTitles(chartTitles) {
+            const { powerlaw, quantiles, ghostly_days } = chartTitles;
+
+            if (powerlaw && powerlaw.length >= 3) {
+                chartData.powerlaw_chart1.caption = powerlaw[0];
+                chartData.powerlaw_chart2.caption = powerlaw[1];
+                chartData.powerlaw_chart3.caption = powerlaw[2];
+                console.log('Power Law chart captions updated from JSON.');
+            }
+            if (quantiles && quantiles.length >= 3) {
+                chartData.quantiles_chart1.caption = quantiles[0];
+                chartData.quantiles_chart2.caption = quantiles[1];
+                chartData.quantiles_chart3.caption = quantiles[2];
+                console.log('Quantiles chart captions updated from JSON.');
+            }
+            if (ghostly_days && ghostly_days.length >= 3) {
+                chartData.ghostly_days_chart1.caption = ghostly_days[0];
+                chartData.ghostly_days_chart2.caption = ghostly_days[1];
+                chartData.ghostly_days_chart3.caption = ghostly_days[2];
+                console.log('Ghostly Days Ahead chart captions updated from JSON.');
+            }
+        }
+
+        /*******************************************************
+         * 2) GLOBAL STATE & CONFIG
+         *******************************************************/
         // Keep track of last fetched timestamp
         let previousTimestamp = null;
         let newTimestamp = null;
@@ -410,7 +457,9 @@
         // Object to store parsed page texts
         let pageTexts = {};
 
-        // Function to fetch and parse text.txt with cache busting
+        /*******************************************************
+         * 3) FETCH & PARSE TEXT CONTENT (Markdown -> HTML)
+         *******************************************************/
         async function fetchAndParseText() {
             try {
                 const cacheBuster = `v=${Date.now()}`;
@@ -426,10 +475,8 @@
             }
         }
 
-        // Function to parse the fetched text into pages
         function parseText(text) {
             // Use a regex that matches "Page [number] — [Title]"
-            // The dash can be -, –, or —
             const pageHeaderRegex = /^Page\s+(\d+)\s+[—\-–]\s+(.+)$/i;
 
             const lines = text.split(/\r?\n/);
@@ -468,7 +515,6 @@
             console.log(`Total pages parsed: ${Object.keys(pageTexts).length}`);
         }
 
-        // Improved Markdown Parser
         function parseMarkdown(markdownText) {
             const lines = markdownText.split(/\r?\n/);
             let html = '';
@@ -493,6 +539,7 @@
                         html += cells.map(() => '<th></th>').join('');
                         html += '</tr>\n</thead>\n<tbody>\n';
                     } else {
+                        // If we haven't yet found a <thead>, treat the first row as <th>, else <td>
                         const rowTag = html.includes('<thead>') ? 'td' : 'th';
                         html += `<tr>${cells.map(cell => `<${rowTag}>${cell}</${rowTag}>`).join('')}</tr>\n`;
                     }
@@ -507,17 +554,17 @@
 
                 // Inline formatting
                 processedLine = processedLine
-                    .replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>') // Bold + Italic with ***
-                    .replace(/___(.*?)___/g, '<strong><em>$1</em></strong>')       // Bold + Italic with ___
-                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')             // Bold with **
-                    .replace(/__(.*?)__/g, '<strong>$1</strong>')                 // Bold with __
-                    .replace(/\*(.*?)\*/g, '<em>$1</em>')                        // Italic with *
-                    .replace(/_(.*?)_/g, '<em>$1</em>');                         // Italic with _
+                    .replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>') // Bold + Italic: ***
+                    .replace(/___(.*?)___/g, '<strong><em>$1</em></strong>')       // Bold + Italic: ___
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')             // Bold: **
+                    .replace(/__(.*?)__/g, '<strong>$1</strong>')                 // Bold: __
+                    .replace(/\*(.*?)\*/g, '<em>$1</em>')                         // Italic: *
+                    .replace(/_(.*?)_/g, '<em>$1</em>');                          // Italic: _
 
                 // Replace inline images and links
                 processedLine = processedLine
-                    .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1">') // Images
-                    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>');     // Links
+                    .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1">')   // Images
+                    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>');       // Links
 
                 // Detect headings (#, ##, ###, etc.)
                 const headingMatch = processedLine.match(/^(#{1,6})\s+(.*)$/);
@@ -580,12 +627,11 @@
             return html;
         }
 
-        // ---- NEW FUNCTION: Align images after the #pageText is updated ----
+        // Align images after the #pageText is updated
         function handleImagesInPageText() {
             const container = document.getElementById('pageText');
             const images = container.querySelectorAll('img');
             images.forEach(img => {
-                // Wait for the image’s natural width to be known
                 img.addEventListener('load', () => {
                     const containerWidth = container.clientWidth;
                     if (img.naturalWidth > containerWidth) {
@@ -601,18 +647,18 @@
             });
         }
 
-        // Function to display page text
         function displayPageText(pageNumber) {
             if (pageTexts[pageNumber]) {
                 pageTextContainer.innerHTML = pageTexts[pageNumber];
             } else {
                 pageTextContainer.innerHTML = '<p>No additional information available for this page.</p>';
             }
-            // Align images after the DOM update
             handleImagesInPageText();
         }
 
-        // Preload Images to Improve Performance
+        /*******************************************************
+         * 4) IMAGE PRELOADING
+         *******************************************************/
         async function preloadImages() {
             console.log('Starting image preloading...');
             const timestamp = new Date().toISOString();
@@ -636,7 +682,9 @@
             console.log('Image preloading completed.');
         }
 
-        // Function to fetch and display update time (and now also chart titles)
+        /*******************************************************
+         * 5) DISPLAY UPDATE TIME (JSON Poll)
+         *******************************************************/
         async function displayUpdateTime() {
             console.log('Fetching chart update information...');
             try {
@@ -649,40 +697,28 @@
 
                 const gmtTimestamp = data.timestamp_gmt;
                 const price = data.current_price.toFixed(2); // Format price to 2 decimal places
+
+                // --- INITIAL LOAD ---
                 if (!previousTimestamp) {
                     if (gmtTimestamp) {
                         const dateObj = new Date(gmtTimestamp);
                         if (!isNaN(dateObj)) {
-                            const formattedDate = dateObj.toLocaleString('en-GB', {
-                                day: 'numeric',
-                                month: 'short',
-                                year: 'numeric',
-                                hour: 'numeric',
-                                minute: '2-digit',
-                                hour12: true
-                            }).replace(',', '');
-                            document.getElementById('updateTime').innerHTML =
-                                `Bitcoin price is <strong>${price}</strong> as of <strong>${formattedDate}</strong>`;
+                            document.getElementById('updateTime').innerHTML = getUpdateTimeHTML(dateObj, price);
                             previousTimestamp = gmtTimestamp;
-                            console.log(`Update time set to: ${formattedDate}`);
+                            console.log(`Initial load time set to: ${formatDateTime(dateObj)}`);
                         }
                     }
-                } else if (gmtTimestamp && gmtTimestamp !== previousTimestamp) {
+                }
+                // --- SUBSEQUENT POLLS ---
+                else if (gmtTimestamp && gmtTimestamp !== previousTimestamp) {
                     newTimestamp = gmtTimestamp;
                     const updateTimeElement = document.getElementById('updateTime');
+
                     if (!updateTimeElement.querySelector('#refreshButton')) {
                         console.log('New update available. Displaying REFRESH button.');
-                        const refreshButton = document.createElement('button');
-                        refreshButton.id = 'refreshButton';
-                        refreshButton.innerText = 'REFRESH';
-                        refreshButton.style.fontSize = '12px';
-                        refreshButton.style.background = 'none';
-                        refreshButton.style.border = 'none';
-                        refreshButton.style.cursor = 'pointer';
-                        refreshButton.style.marginLeft = '8px';
-                        refreshButton.style.color = 'var(--refresh-button-color)';
-                        refreshButton.style.animation = 'pulse 2s infinite';
 
+                        // Use our DRY helper to create the button
+                        const refreshButton = createRefreshButton();
                         refreshButton.addEventListener('click', async () => {
                             console.log('REFRESH button clicked.');
                             refreshButton.remove();
@@ -691,28 +727,15 @@
                             if (newTimestamp) {
                                 const dateObj = new Date(newTimestamp);
                                 if (!isNaN(dateObj)) {
-                                    const formattedDate = dateObj.toLocaleString('en-GB', {
-                                        day: '2-digit',
-                                        month: 'short',
-                                        year: 'numeric',
-                                        hour: 'numeric',
-                                        minute: '2-digit',
-                                        hour12: true
-                                    }).replace(',', '');
-                                    document.getElementById('updateTime').innerText =
-                                        `Charts up to date as of ${formattedDate}`;
-                                    console.log(`Update time updated to: ${formattedDate}`);
+                                    document.getElementById('updateTime').innerHTML = getUpdateTimeHTML(dateObj, price);
+                                    console.log(`Update time updated to: ${formatDateTime(dateObj)}`);
                                     previousTimestamp = newTimestamp;
                                     newTimestamp = null;
                                 }
                             }
-                            console.log('Reloading images due to REFRESH.');
-                            await preloadImages();
-                            console.log('Images reloaded. Re-rendering page.');
-                            renderPage(currentPage);
 
-                            console.log('Restarting polling for updates.');
-                            startEnhancedPolling();
+                            // Single call to refresh everything
+                            await refreshPage();
                         });
 
                         updateTimeElement.appendChild(refreshButton);
@@ -722,33 +745,36 @@
                     }
                 }
 
+                // Update chart captions if present
                 if (data.chart_titles) {
-                    const { powerlaw, quantiles, ghostly_days } = data.chart_titles;
-                    if (powerlaw && powerlaw.length >= 3) {
-                        chartData.powerlaw_chart1.caption = powerlaw[0];
-                        chartData.powerlaw_chart2.caption = powerlaw[1];
-                        chartData.powerlaw_chart3.caption = powerlaw[2];
-                        console.log('Power Law chart captions updated from JSON.');
-                    }
-                    if (quantiles && quantiles.length >= 3) {
-                        chartData.quantiles_chart1.caption = quantiles[0];
-                        chartData.quantiles_chart2.caption = quantiles[1];
-                        chartData.quantiles_chart3.caption = quantiles[2];
-                        console.log('Quantiles chart captions updated from JSON.');
-                    }
-                    if (ghostly_days && ghostly_days.length >= 3) {
-                        chartData.ghostly_days_chart1.caption = ghostly_days[0];
-                        chartData.ghostly_days_chart2.caption = ghostly_days[1];
-                        chartData.ghostly_days_chart3.caption = ghostly_days[2];
-                        console.log('Ghostly Days Ahead chart captions updated from JSON.');
-                    }
+                    applyChartTitles(data.chart_titles);
                 }
             } catch (error) {
                 console.error('Error fetching or parsing chart_info.json:', error);
             }
         }
 
-        // Render Charts and Page Text Based on Selected Page
+        function formatDateTime(dateObj) {
+            return dateObj.toLocaleString('en-GB', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+            }).replace(',', '');
+        }
+
+        function getUpdateTimeHTML(dateObj, price) {
+            return `
+                Bitcoin price is <strong>${price}</strong>
+                as of <strong>${formatDateTime(dateObj)}</strong>
+            `;
+        }
+
+        /*******************************************************
+         * 6) RENDERING THE PAGE (Charts + Text)
+         *******************************************************/
         function renderPage(pageNumber) {
             console.log(`Rendering page ${pageNumber}: ${pageConfigs[pageNumber].title}`);
             const config = pageConfigs[pageNumber];
@@ -798,7 +824,9 @@
             displayPageText(pageNumber);
         }
 
-        // Open Modal with Selected Chart
+        /*******************************************************
+         * 7) MODAL HANDLERS
+         *******************************************************/
         function openModal(index) {
             const currentCharts = pageConfigs[currentPage].charts;
             if (index >= 0 && index < currentCharts.length) {
@@ -812,7 +840,6 @@
             }
         }
 
-        // Close Modal
         function closeModal() {
             modal.style.display = 'none';
             modal.setAttribute('aria-hidden', 'true');
@@ -821,13 +848,11 @@
             document.body.style.overflow = '';
         }
 
-        // Event Listener for Modal Click
         modal.addEventListener('click', () => {
             console.log('Modal background clicked.');
             closeModal();
         });
 
-        // Keyboard Navigation for Modal
         document.addEventListener('keydown', function(event) {
             if (modal.style.display === 'block') {
                 const currentCharts = pageConfigs[currentPage].charts;
@@ -847,19 +872,21 @@
                         event.preventDefault();
                         currentModalIndex = (currentModalIndex + 1) % currentCharts.length;
                         modalImg.src = loadedImages[currentCharts[currentModalIndex]];
-                        console.log(`ArrowRight pressed. Navigating to next chart: ${currentCharts[currentModalIndex]} (Index: ${currentModalIndex})`);
+                        console.log(`ArrowRight pressed. Next chart: ${currentCharts[currentModalIndex]} (Index: ${currentModalIndex})`);
                         break;
                     case 'ArrowLeft':
                         event.preventDefault();
                         currentModalIndex = (currentModalIndex - 1 + currentCharts.length) % currentCharts.length;
                         modalImg.src = loadedImages[currentCharts[currentModalIndex]];
-                        console.log(`ArrowLeft pressed. Navigating to previous chart: ${currentCharts[currentModalIndex]} (Index: ${currentModalIndex})`);
+                        console.log(`ArrowLeft pressed. Prev chart: ${currentCharts[currentModalIndex]} (Index: ${currentModalIndex})`);
                         break;
                 }
             }
         });
 
-        // Navigation Button Click Events
+        /*******************************************************
+         * 8) NAVIGATION BUTTONS
+         *******************************************************/
         document.querySelectorAll('.nav-button').forEach(button => {
             button.addEventListener('click', () => {
                 const selectedPage = parseInt(button.dataset.page);
@@ -869,7 +896,9 @@
             });
         });
 
-        // Enhanced Polling Mechanism to Handle Sleep/Wake
+        /*******************************************************
+         * 9) ENHANCED POLLING FOR CHART UPDATES
+         *******************************************************/
         (function() {
             const POLLING_INTERVAL = 10 * 60 * 1000; // 10 minutes
             let nextPollTime = Date.now() + POLLING_INTERVAL;
@@ -880,7 +909,7 @@
                     console.log('Initiating scheduled JSON poll.');
                     await displayUpdateTime();
                     nextPollTime = currentTime + POLLING_INTERVAL;
-                    console.log(`Next poll scheduled in 10 minutes.`);
+                    console.log('Next poll scheduled in 10 minutes.');
                 }
                 scheduleNextPoll();
             };
@@ -895,23 +924,23 @@
                 } else {
                     const minutes = Math.floor(timeUntilNextPoll / 60000);
                     const seconds = Math.floor((timeUntilNextPoll % 60000) / 1000);
-                    console.log(`Time remaining until next poll: ${minutes} minute(s) and ${seconds} second(s).`);
+                    console.log(`Time until next poll: ${minutes} minute(s) and ${seconds} second(s).`);
                     setTimeout(pollFunction, timeUntilNextPoll);
                 }
             };
 
             const handleVisibilityChange = () => {
                 if (document.visibilityState === 'visible') {
-                    console.log('Page became visible. Checking if poll needs to be triggered.');
+                    console.log('Page visible again. Checking if poll is overdue.');
                     const currentTime = Date.now();
                     if (currentTime >= nextPollTime) {
-                        console.log('Scheduled poll time has passed while the page was hidden. Polling now.');
+                        console.log('Poll time passed while page was hidden. Polling now.');
                         pollFunction();
                     } else {
                         const timeUntilNextPoll = nextPollTime - currentTime;
                         const minutes = Math.floor(timeUntilNextPoll / 60000);
                         const seconds = Math.floor((timeUntilNextPoll % 60000) / 1000);
-                        console.log(`Remaining time until next poll after becoming visible: ${minutes} minute(s) and ${seconds} second(s).`);
+                        console.log(`Time until next poll after becoming visible: ${minutes}m ${seconds}s`);
                     }
                 }
             };
@@ -937,9 +966,11 @@
             });
         })();
 
-        // Initialize the Page
+        /*******************************************************
+         * 10) INITIALIZE THE PAGE
+         *******************************************************/
         window.addEventListener('DOMContentLoaded', async () => {
-            console.log('DOM fully loaded and parsed. Initializing application...');
+            console.log('DOM fully loaded. Initializing application...');
             await displayUpdateTime();
             await fetchAndParseText();
             await preloadImages();
