@@ -1,7 +1,7 @@
 # Note to AI/ChatGPT/Claude
 # Don't delete or alter this comment block
 # Don't delete commented out code without asking. I might have a half-baked idea I want to keep.
-# Don't delete code that isn't currently called. It miught get called somewhere down the road.
+# Don't delete code that isn't currently called. It might get called somewhere down the road.
 
 from datetime import datetime, timezone
 import argparse
@@ -20,18 +20,43 @@ import json
 
 logger = logging.getLogger(__name__)
 
-def add_bottom_credits(fig):
+def add_bottom_credits(fig, btc_price=None, local_time_str=None, website=None):
     """
-    Adds a single-line credit at the bottom of each figure.
-    Adjust its styling (position, color, font size/weight) here.
+    Displays credits (left-aligned) and BTC info (right-aligned) in a single line
+    at the bottom of the figure.
+    Now with a smaller font (8) and lower vertical placement (-0.03) to avoid overlap.
     """
+    # Left side text (credits)
+    left_text = (
+        "Chart by @Nosredna. Thanks to @Giovann35084111, @ChartsBtc, "
+        "@apsk32, @sminston_with, @math_sci_tech"
+    )
+
+    # Right side text
+    if btc_price is not None and local_time_str is not None and website is not None:
+        right_text = f"Bitcoin price is {btc_price:,.2f} as of {local_time_str}   {website}"
+    else:
+        right_text = ""
+
+    # Smaller font, and a bit further down
     fig.text(
-        0.5,       # horizontal center
-        -0.02,     # vertical offset to push text below x-axis
-        "Chart by @Nosredna. Thanks to @Giovann35084111, @ChartsBtc, @apsk32, @sminston_with, @math_sci_tech",
-        ha='center',
+        0.02,
+        -0.03,  # was -0.02
+        left_text,
+        ha='left',
         va='bottom',
-        fontsize=10,
+        fontsize=8,  # was 10
+        fontweight='normal',
+        color='gray'
+    )
+
+    fig.text(
+        0.98,
+        -0.03,  # was -0.02
+        right_text,
+        ha='right',
+        va='bottom',
+        fontsize=8,  # was 10
         fontweight='normal',
         color='gray'
     )
@@ -382,6 +407,7 @@ def main():
         logger.error("No data available from the local CSV file. Exiting.")
         raise ValueError("No data available from the local CSV file. Exiting.")
 
+    # Add today's price as a data point if we have a current_price
     if current_price:
         logger.info(f"Adding current price (${current_price:,.2f}) as today's data point.")
         current_row = pd.DataFrame({
@@ -434,6 +460,14 @@ def main():
 
     recent = today if today in combined_data['Start'].values else combined_data['Start'].max()
     logger.info(f"Using '{recent.date()}' as the most recent data point.")
+
+    # Convert the UTC current_time string into a local time string for credits
+    if current_time:
+        dt_utc = datetime.fromisoformat(current_time)
+        dt_local = dt_utc.astimezone()  # your system's local tz
+        local_time_str = dt_local.strftime("%d %b %Y %I:%M %p").lstrip('0')
+    else:
+        local_time_str = ""
 
     # ------------------------------------
     # 5. Prepare Calculations for Charts
@@ -572,9 +606,6 @@ def main():
         }
     }
 
-    # ------------------------------------------------
-    # 6. Functions to Build and Save Each Chart
-    # ------------------------------------------------
     def add_credits_box(ax, credits_text):
         """Stub function kept for reference. Not actively drawing a box."""
         pass
@@ -747,7 +778,13 @@ def main():
             va='bottom'
         )
 
-        add_bottom_credits(fig)
+        # Updated credits (left and right) -- now smaller and lower
+        add_bottom_credits(
+            fig,
+            btc_price=current_price,
+            local_time_str=local_time_str,
+            website="https://nosredna-btc.github.io/btc-cycle-charts"
+        )
 
         plt.tight_layout()
         plt.savefig(filename, dpi=300, bbox_inches='tight')
@@ -839,7 +876,13 @@ def main():
             va='bottom'
         )
 
-        add_bottom_credits(fig)
+        # Updated credits (left and right) -- smaller and lower
+        add_bottom_credits(
+            fig,
+            btc_price=current_price,
+            local_time_str=local_time_str,
+            website="https://nosredna-btc.github.io/btc-cycle-charts"
+        )
 
         plt.tight_layout()
         plt.savefig(filename, dpi=300, bbox_inches='tight')
@@ -1038,7 +1081,13 @@ def main():
         # Use a smaller legend box for ghostly_days
         add_legend_box(ax, CONFIG["LEGEND_BOX_POSITIONS"]["ghostly_days"])
 
-        add_bottom_credits(fig)
+        # Updated credits (left and right) -- smaller and lower
+        add_bottom_credits(
+            fig,
+            btc_price=current_price,
+            local_time_str=local_time_str,
+            website="https://nosredna-btc.github.io/btc-cycle-charts"
+        )
 
         # Equations
         equations_text_gd = (
