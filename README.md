@@ -7,7 +7,7 @@ Bitcoin 4-Year Cycle Charts is a web-based application designed to visualize Bit
 ## Features
 - Dynamic Chart Generation: Automatically generates charts based on Bitcoin's 4-year cycles using different analytical models.
 - Interactive Frontend: A single HTML file that displays charts with options to navigate between different models.
-- Real-Time Updates: Fetches the latest Bitcoin data to ensure charts are up-to-date.
+- BTC Updates: Fetches the latest Bitcoin data periodically to ensure charts are up-to-date (within the last few hours).
 - Keyboard left and right to advance through the current group of charts when magnified.
 
 ## Coming Soon
