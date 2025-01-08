@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <title>Bitcoin 4 Year Cycle Charts</title>
     <link rel="icon" href="assets/bitcoin.ico" type="image/x-icon">
+    <script src="assets/marked.min.js"></script>
     <style>
-        /* Basic CSS variables for layout, colors, etc. */
+        /* CSS Variables for consistent styling */
         :root {
             --body-bg: #f0f0f0;
             --text-color: #333;
@@ -40,10 +41,12 @@
             background-color: var(--body-bg);
             margin: 20px;
         }
+
         h1, h2, h3, h4, h5, h6 {
             text-align: center;
             color: var(--text-color);
         }
+
         #pageText h1,
         #pageText h2,
         #pageText h3,
@@ -61,6 +64,7 @@
             margin: 20px 0;
             flex-wrap: wrap;
         }
+
         .nav-button {
             padding: 8px 16px;
             background-color: var(--nav-button-bg);
@@ -70,12 +74,15 @@
             cursor: pointer;
             transition: background-color var(--transition-speed);
         }
+
         .nav-button:hover {
             background-color: var(--nav-button-hover-bg);
         }
+
         .nav-button.active {
             background-color: var(--nav-button-active-bg);
         }
+
         .nav-button:hover,
         .chart-item:hover,
         #refreshButton:hover {
@@ -88,6 +95,7 @@
             justify-content: center;
             gap: 20px;
         }
+
         .chart-item {
             background-color: var(--chart-bg);
             border: 1px solid var(--border-color);
@@ -101,24 +109,29 @@
             flex-direction: column;
             gap: 10px;
         }
+
         .charts-grid.single-chart .chart-item {
             width: var(--single-chart-width);
             height: var(--single-chart-height);
             margin: 0 auto;
             max-width: none;
         }
+
         .charts-grid.single-chart .chart-wrapper {
             flex: 0 0 500px;
         }
+
         .charts-grid.single-chart .caption {
             font-size: var(--single-caption-font-size);
         }
+
         .chart-wrapper {
             flex: 0 0 240px;
             background-color: var(--chart-bg);
             position: relative;
             overflow: hidden;
         }
+
         .chart-wrapper img {
             position: absolute;
             top: 0;
@@ -129,20 +142,24 @@
             border-radius: 4px;
             transition: transform 0.2s ease;
         }
+
         .caption-wrapper {
             flex: 0 0 30px;
             display: flex;
             align-items: center;
         }
+
         .caption {
             width: 100%;
             text-align: center;
             font-size: var(--caption-font-size);
             color: var(--subtext-color);
         }
+
         .chart-item:hover {
             box-shadow: var(--hover-shadow);
         }
+
         .chart-item:hover img {
             transform: scale(1.02);
         }
@@ -159,6 +176,7 @@
             backdrop-filter: blur(5px);
             cursor: pointer;
         }
+
         .modal-content {
             margin: auto;
             display: block;
@@ -191,6 +209,7 @@
                 opacity: 1;
             }
         }
+
         #refreshButton {
             animation: pulse 2s infinite;
             transition: transform 0.2s ease, opacity 0.2s ease, color 0.3s ease;
@@ -202,6 +221,7 @@
             font-size: 12px;
             padding: 0;
         }
+
         #refreshButton:hover {
             color: var(--refresh-button-hover-color);
         }
@@ -218,40 +238,45 @@
             margin-right: auto;
             line-height: 1.6;
         }
+
         #pageText img {
             max-width: 75%;
             height: auto;
         }
+
         #pageText h2, #pageText h3, #pageText h4 {
             color: var(--text-color);
         }
+
         #pageText ul {
             list-style-type: disc;
             padding-left: 20px;
         }
+
         #pageText a {
             color: var(--nav-button-bg);
             text-decoration: none;
         }
+
         #pageText a:hover {
             text-decoration: underline;
         }
     </style>
 </head>
 <body>
-    <!-- Modal for enlarged chart -->
+    <!-- Modal for displaying enlarged charts -->
     <div id="imageModal" class="modal" aria-hidden="true" role="dialog">
         <img class="modal-content" id="modalImage" alt="Enlarged Chart">
     </div>
 
     <h1>Bitcoin 4 Year Cycle Charts</h1>
 
-    <!-- Shows price + last updated time -->
+    <!-- Display current price and last update time -->
     <div id="updateTime" style="text-align: center; margin-bottom: 20px; font-size: 16px; color: var(--subtext-color);">
-        <!-- Populated by JS -->
+        <!-- Content populated by JavaScript -->
     </div>
 
-    <!-- Navigation buttons -->
+    <!-- Navigation buttons for different chart categories -->
     <div class="navigation">
         <button class="nav-button" data-page="1">Featured Chart</button>
         <button class="nav-button" data-page="2">Power Law Charts</button>
@@ -260,21 +285,20 @@
         <button class="nav-button" data-page="5">All Charts</button>
     </div>
 
-    <!-- Container for chart items -->
+    <!-- Container to hold chart items -->
     <div id="chartContainer"></div>
 
-    <!-- Additional textual content goes here -->
+    <!-- Container for additional textual content -->
     <div id="pageText"></div>
 
     <script>
         const POLLING_INTERVAL = 10 * 60 * 1000; // 10 minutes
-        let isPollingActive = false;  // Indicates if polling is active
+        let isPollingActive = false;
         let currentPage = 1;
         let currentModalIndex = -1;
         let previousTimestamp = null;
 
-        // Global flag to prevent multiple fetches
-        let hasFetched = false;
+        let hasFetched = false; // Prevents multiple simultaneous fetches
 
         const pageConfigs = {
             1: { title: "Featured Chart", charts: ['powerlaw_chart1'] },
@@ -348,33 +372,30 @@
             }
         };
 
-        // For storing preloaded images and page texts
         const loadedImages = {};
         let pageTexts = {};
 
-        // DOM element references
         const modal = document.getElementById('imageModal');
         const modalImg = document.getElementById('modalImage');
         const container = document.getElementById('chartContainer');
         const pageTextContainer = document.getElementById('pageText');
 
-
+        /**
+         * Fetches chart information if not already fetched.
+         * @param {string} trigger - The source triggering the fetch.
+         */
         async function fetchChartInfoIfNeeded(trigger = 'Unknown') {
             console.log(`[fetchChartInfoIfNeeded] Triggered by: ${trigger}`);
 
-            // If a fetch is already in progress, exit early
             if (hasFetched) {
                 console.warn('[fetchChartInfoIfNeeded] Fetch request ignored to prevent spamming.');
                 return;
             }
 
-            // Set the flag to indicate a fetch is in progress
             hasFetched = true;
-            console.log('[fetchChartInfoIfNeeded] Fetch initiated. Setting hasFetched to true.');
 
             try {
                 const fetchUrl = `charts/chart_info.json?v=${Date.now()}`;
-                console.log(`[fetchChartInfoIfNeeded] Fetching data from: ${fetchUrl}`);
                 const response = await fetch(fetchUrl);
 
                 if (!response.ok) {
@@ -382,7 +403,7 @@
                 }
 
                 const data = await response.json();
-                console.log('[fetchChartInfoIfNeeded] Fetch successful. Data received:', data);
+                console.log('[fetchChartInfoIfNeeded] Fetch successful.');
 
                 await handleChartInfo(data, trigger);
                 return data;
@@ -390,44 +411,39 @@
                 console.error('[fetchChartInfoIfNeeded] Error fetching chart info:', error);
             } finally {
                 hasFetched = false;
-                console.log('[fetchChartInfoIfNeeded] Fetch completed. Setting hasFetched to false.');
             }
         }
 
+        /**
+         * Processes the fetched chart information.
+         * @param {Object} data - The fetched data.
+         * @param {string} trigger - The source triggering the handler.
+         */
         async function handleChartInfo(data, trigger) {
-            // console.log(`[handleChartInfo] Handling chart info triggered by: ${trigger}`);
             const gmtTimestamp = data.timestamp_gmt;
             const price = parseFloat(data.current_price).toFixed(2);
 
-            // On first load
             if (!previousTimestamp) {
-                // console.log('[handleChartInfo] First load detected.');
                 if (gmtTimestamp) {
                     const dateObj = new Date(gmtTimestamp);
                     if (!isNaN(dateObj)) {
                         document.getElementById('updateTime').innerHTML = getUpdateTimeHTML(dateObj, price);
                         previousTimestamp = gmtTimestamp;
-                        // console.log(`[handleChartInfo] UpdateTime set to: ${document.getElementById('updateTime').innerHTML}`);
                     }
                 }
-            }
-            // On subsequent loads
-            else if (gmtTimestamp && gmtTimestamp !== previousTimestamp) {
-                // console.log('[handleChartInfo] New data detected. Preparing to update.');
-                previousTimestamp = gmtTimestamp; // Update the timestamp immediately to prevent multiple triggers
+            } else if (gmtTimestamp && gmtTimestamp !== previousTimestamp) {
+                previousTimestamp = gmtTimestamp;
                 const updateTimeElement = document.getElementById('updateTime');
 
                 if (!updateTimeElement.querySelector('#refreshButton')) {
-                    // console.log('[handleChartInfo] Refresh button not found. Creating new refresh button.');
                     const refreshButton = createRefreshButton();
                     
                     refreshButton.addEventListener('click', async () => {
-                        // console.log('[handleChartInfo] Refresh button clicked.');
-                        refreshButton.disabled = true; // Disable to prevent multiple clicks
+                        console.log('[handleChartInfo] Refresh button clicked.');
+                        refreshButton.disabled = true;
                         refreshButton.innerText = 'Refreshing...';
 
                         try {
-                            // Fetch the latest JSON data
                             const latestData = await fetchChartInfoIfNeeded('RefreshButton');
 
                             if (latestData && latestData.timestamp_gmt) {
@@ -437,23 +453,16 @@
                                     document.getElementById('updateTime').innerHTML = getUpdateTimeHTML(latestDateObj, latestPrice);
                                     previousTimestamp = latestData.timestamp_gmt;
                                     
-                                    // **Added Lines Below to Update Charts Immediately**
                                     await preloadImages();
                                     renderPage(currentPage);
-                                    // **End of Added Lines**
                                 }
                             }
 
-                            // Remove the refresh button after successful refreshing
                             refreshButton.remove();
-                            // console.log('[handleChartInfo] Refresh button removed after refreshing.');
-
-                            // Restart polling
+                            console.log('[handleChartInfo] Refresh button removed after refreshing.');
                             startEnhancedPolling();
-                            // console.log('[handleChartInfo] Polling restarted after refreshing.');
                         } catch (error) {
                             console.error('[handleChartInfo] Error during refresh:', error);
-                            // Re-enable the button and notify the user
                             refreshButton.disabled = false;
                             refreshButton.innerText = 'REFRESH';
                             alert('Failed to refresh. Please try again.');
@@ -461,31 +470,29 @@
                     });
 
                     updateTimeElement.appendChild(refreshButton);
-                    // console.log('[handleChartInfo] Refresh button appended to updateTime element.');
+                    console.log('[handleChartInfo] Refresh button appended to updateTime element.');
                     stopEnhancedPolling();
-                    // console.log('[handleChartInfo] Polling stopped after new data detected.');
+                    console.log('[handleChartInfo] Polling stopped after new data detected.');
                 }
             }
         }
 
-        // Helper functions
+        /**
+         * Creates the refresh button element.
+         * @returns {HTMLElement} - The refresh button.
+         */
         function createRefreshButton() {
-            // console.log('[createRefreshButton] Creating refresh button.');
             const refreshButton = document.createElement('button');
             refreshButton.id = 'refreshButton';
             refreshButton.innerText = 'REFRESH';
-            refreshButton.style.marginLeft = '8px'; // Ensure it aligns with existing styles
-            refreshButton.style.animation = 'pulse 2s infinite';
-            refreshButton.style.transition = 'transform 0.2s ease, opacity 0.2s ease, color 0.3s ease';
-            refreshButton.style.color = 'var(--refresh-button-color)';
-            refreshButton.style.background = 'none';
-            refreshButton.style.border = 'none';
-            refreshButton.style.cursor = 'pointer';
-            refreshButton.style.fontSize = '12px';
-            refreshButton.style.padding = '0';
             return refreshButton;
         }
 
+        /**
+         * Formats a Date object into a readable string.
+         * @param {Date} dateObj - The date to format.
+         * @returns {string} - The formatted date string.
+         */
         function formatDateTime(dateObj) {
             return dateObj.toLocaleString('en-GB', {
                 day: 'numeric',
@@ -497,17 +504,23 @@
             }).replace(',', '');
         }
 
+        /**
+         * Generates HTML for the update time section.
+         * @param {Date} dateObj - The date of the update.
+         * @param {string} price - The current price.
+         * @returns {string} - The HTML string.
+         */
         function getUpdateTimeHTML(dateObj, price) {
-            // console.log(`[getUpdateTimeHTML] Formatting update time: $${price} as of ${dateObj}`);
             return `
                 Bitcoin price is <strong>$${price}</strong>
                 as of <strong>${formatDateTime(dateObj)}</strong>
             `;
         }
 
-        // Text content handling (Markdown processing remains unchanged)
+        /**
+         * Fetches and parses additional textual content.
+         */
         async function fetchAndParseText() {
-            // console.log('[fetchAndParseText] Fetching and parsing text content.');
             try {
                 const cacheBuster = `v=${Date.now()}`;
                 const response = await fetch(`text.txt?${cacheBuster}`);
@@ -515,33 +528,39 @@
                     throw new Error('Failed to fetch text.txt');
                 }
                 const text = await response.text();
-                // console.log('[fetchAndParseText] Text content fetched successfully.');
                 parseText(text);
             } catch (error) {
-                // console.error('[fetchAndParseText] Error fetching text content:', error);
-                // Optionally, display a user-friendly message
                 pageTextContainer.innerHTML = '<p>Unable to load additional information at this time.</p>';
             }
         }
 
+        /**
+         * Parses the fetched text content and organizes it by page.
+         * @param {string} text - The raw text content.
+         */
         function parseText(text) {
-            //console.log('[parseText] Parsing text content.');
             const pageHeaderRegex = /^Page\s+(\d+)\s+[—\-–]\s+(.+)$/i;
             const lines = text.split(/\r?\n/);
             let currentPageNumber = null;
             let currentPageContent = [];
             pageTexts = {};
 
-            lines.forEach((line, index) => {
+            marked.setOptions({
+                breaks: true,
+                gfm: true,
+                headerIds: false,
+                mangle: false,
+                sanitize: false
+            });
+
+            lines.forEach((line) => {
                 const headerMatch = line.match(pageHeaderRegex);
                 if (headerMatch) {
                     if (currentPageNumber !== null) {
-                        pageTexts[currentPageNumber] = parseMarkdown(currentPageContent.join('\n').trim());
-                        //console.log(`[parseText] Parsed content for Page ${currentPageNumber}.`);
+                        pageTexts[currentPageNumber] = marked.parse(currentPageContent.join('\n').trim());
                     }
                     currentPageNumber = parseInt(headerMatch[1]);
                     currentPageContent = [];
-                    //console.log(`[parseText] Detected header for Page ${currentPageNumber}: ${headerMatch[2]}`);
                 } else {
                     if (currentPageNumber !== null) {
                         currentPageContent.push(line);
@@ -550,126 +569,14 @@
             });
 
             if (currentPageNumber !== null && currentPageContent.length > 0) {
-                pageTexts[currentPageNumber] = parseMarkdown(currentPageContent.join('\n').trim());
-                //console.log(`[parseText] Parsed content for Page ${currentPageNumber}.`);
+                pageTexts[currentPageNumber] = marked.parse(currentPageContent.join('\n').trim());
             }
         }
 
-        function parseMarkdown(markdownText) {
-            //console.log('[parseMarkdown] Parsing markdown text.');
-            const lines = markdownText.split(/\r?\n/);
-            let html = '';
-            let inList = false;
-            let listType = '';
-            let inTable = false;
-
-            lines.forEach((line) => {
-                let processedLine = line.trim();
-
-                // Table handling
-                if (processedLine.startsWith('|') && processedLine.endsWith('|')) {
-                    const cells = processedLine.split('|').slice(1, -1).map(cell => cell.trim());
-                    if (!inTable) {
-                        html += '<table>\n';
-                        inTable = true;
-                        //console.log('[parseMarkdown] Started parsing a table.');
-                    }
-                    if (cells.every(cell => /^-+$/.test(cell))) {
-                        html += '<thead>\n<tr>';
-                        html += cells.map(() => '<th></th>').join('');
-                        html += '</tr>\n</thead>\n<tbody>\n';
-                        //console.log('[parseMarkdown] Detected table header.');
-                    } else {
-                        const rowTag = html.includes('<thead>') ? 'td' : 'th';
-                        html += `<tr>${cells.map(cell => `<${rowTag}>${cell}</${rowTag}>`).join('')}</tr>\n`;
-                        //console.log('[parseMarkdown] Added a table row.');
-                    }
-                    return;
-                }
-                if (inTable) {
-                    html += '</tbody>\n</table>\n';
-                    inTable = false;
-                    //console.log('[parseMarkdown] Closed the table.');
-                }
-
-                // Inline formatting
-                processedLine = processedLine
-                    .replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>')
-                    .replace(/___(.*?)___/g, '<strong><em>$1</em></strong>')
-                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/__(.*?)__/g, '<strong>$1</strong>')
-                    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                    .replace(/_(.*?)_/g, '<em>$1</em>')
-                    .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1">')
-                    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>');
-
-                // Headings
-                const headingMatch = processedLine.match(/^(#{1,6})\s+(.*)$/);
-                if (headingMatch) {
-                    const level = Math.min(headingMatch[1].length + 1, 6);
-                    html += `<h${level}>${headingMatch[2]}</h${level}>\n`;
-                    //console.log(`[parseMarkdown] Added heading level ${level}: ${headingMatch[2]}`);
-                    return;
-                }
-
-                // Lists
-                const ulMatch = processedLine.match(/^[-*+]\s+(.*)$/);
-                if (ulMatch) {
-                    if (!inList || listType !== 'ul') {
-                        inList = true;
-                        listType = 'ul';
-                        html += `<ul>\n`;
-                        //console.log('[parseMarkdown] Started an unordered list.');
-                    }
-                    html += `  <li>${ulMatch[1]}</li>\n`;
-                    return;
-                }
-                const olMatch = processedLine.match(/^\d+\.\s+(.*)$/);
-                if (olMatch) {
-                    if (!inList || listType !== 'ol') {
-                        inList = true;
-                        listType = 'ol';
-                        html += `<ol>\n`;
-                        //console.log('[parseMarkdown] Started an ordered list.');
-                    }
-                    html += `  <li>${olMatch[1]}</li>\n`;
-                    return;
-                }
-
-                // End list or empty line
-                if (processedLine === '') {
-                    if (inList) {
-                        inList = false;
-                        html += `</${listType}>\n`;
-                        //console.log(`[parseMarkdown] Ended the ${listType} list.`);
-                        listType = '';
-                    }
-                    return;
-                }
-
-                if (inList) {
-                    inList = false;
-                    html += `</${listType}>\n`;
-                    //console.log(`[parseMarkdown] Ended the ${listType} list due to non-list item.`);
-                    listType = '';
-                }
-                html += `<p>${processedLine}</p>\n`;
-                //console.log(`[parseMarkdown] Added paragraph: ${processedLine}`);
-            });
-
-            if (inList) {
-                html += `</${listType}>\n`;
-                //console.log(`[parseMarkdown] Ended the ${listType} list at the end of markdown.`);
-            }
-            if (inTable) {
-                html += '</tbody>\n</table>\n';
-                //console.log('[parseMarkdown] Closed the table at the end of markdown.');
-            }
-            return html;
-        }
-
+        /**
+         * Adjusts images within the page text for responsiveness.
+         */
         function handleImagesInPageText() {
-            //console.log('[handleImagesInPageText] Handling images in page text.');
             const container = document.getElementById('pageText');
             const images = container.querySelectorAll('img');
             images.forEach(img => {
@@ -678,55 +585,50 @@
                     if (img.naturalWidth > containerWidth) {
                         img.style.display = 'block';
                         img.style.margin = '0 auto';
-                        //console.log('[handleImagesInPageText] Image resized to block and centered.');
                     } else {
                         img.style.display = 'inline-block';
                         img.style.margin = '0';
-                        //console.log('[handleImagesInPageText] Image displayed inline.');
                     }
                 });
             });
         }
 
+        /**
+         * Displays the textual content for the specified page.
+         * @param {number} pageNumber - The page number to display.
+         */
         function displayPageText(pageNumber) {
-            //console.log(`[displayPageText] Displaying text for Page ${pageNumber}.`);
             if (pageTexts[pageNumber]) {
                 pageTextContainer.innerHTML = pageTexts[pageNumber];
-                //console.log(`[displayPageText] Content for Page ${pageNumber} loaded.`);
             } else {
                 pageTextContainer.innerHTML = '<p>No additional information available for this page.</p>';
-                //console.log(`[displayPageText] No content available for Page ${pageNumber}.`);
             }
             handleImagesInPageText();
         }
 
-        // Image preloading
+        /**
+         * Preloads all chart images to improve performance.
+         */
         async function preloadImages() {
-            //console.log('[preloadImages] Starting image preloading.');
             const timestamp = new Date().toISOString();
             const promises = Object.entries(chartData).map(([id, chart]) => {
                 return new Promise(resolve => {
                     const img = new Image();
                     img.src = `${chart.path}?v=${timestamp}`;
-                    img.onload = () => {
-                        //console.log(`[preloadImages] Image loaded: ${chart.path}`);
-                        resolve();
-                    };
-                    img.onerror = (error) => {
-                        console.error(`Error loading image ${chart.path}:`, error);
-                        resolve(); // Resolve even on error to prevent blocking
-                    };
+                    img.onload = () => resolve();
+                    img.onerror = () => resolve();
                 }).then(() => {
                     loadedImages[id] = `${chart.path}?v=${timestamp}`;
                 });
             });
             await Promise.all(promises);
-            //console.log('[preloadImages] All images preloaded.');
         }
 
-        // Page rendering
+        /**
+         * Renders the specified page with its charts and content.
+         * @param {number} pageNumber - The page number to render.
+         */
         function renderPage(pageNumber) {
-            //console.log(`[renderPage] Rendering Page ${pageNumber}.`);
             const config = pageConfigs[pageNumber];
             const isSingleChart = pageNumber === 1;
 
@@ -752,31 +654,29 @@
                 </div>
             `;
 
-            //console.log(`[renderPage] Page ${pageNumber} content injected into DOM.`);
-
-            // Update active nav button
+            // Highlight the active navigation button
             document.querySelectorAll('.nav-button').forEach(button => {
                 const isActive = parseInt(button.dataset.page) === pageNumber;
                 button.classList.toggle('active', isActive);
-                //console.log(`[renderPage] Nav button for Page ${button.dataset.page} set to ${isActive ? 'active' : 'inactive'}.`);
             });
 
-            // Chart click handlers
+            // Attach click event listeners to chart items
             document.querySelectorAll('.chart-item').forEach((item, index) => {
                 item.addEventListener('click', () => {
                     const chartId = item.getAttribute('data-chart-id');
-                    //console.log(`[renderPage] Chart item clicked: ${chartId} at index ${index}.`);
                     openModal(index);
                 });
             });
 
-            // Display page text
+            // Display corresponding page text
             displayPageText(pageNumber);
         }
 
-        // Modal handlers
+        /**
+         * Opens the modal to display an enlarged chart image.
+         * @param {number} index - The index of the chart to display.
+         */
         function openModal(index) {
-            //console.log(`[openModal] Opening modal for chart index ${index}.`);
             const currentCharts = pageConfigs[currentPage].charts;
             if (index >= 0 && index < currentCharts.length) {
                 currentModalIndex = index;
@@ -785,26 +685,29 @@
                 modal.style.display = 'block';
                 modal.setAttribute('aria-hidden', 'false');
                 document.body.style.overflow = 'hidden';
-                //console.log(`[openModal] Modal displayed with image: ${loadedImages[chartId]}`);
+                console.log('[openModal] Modal opened.');
             } else {
-                console.warn(`[openModal] Invalid chart index: ${index}. Modal not opened.`);
+                console.warn(`[openModal] Invalid chart index: ${index}.`);
             }
         }
 
+        /**
+         * Closes the chart modal.
+         */
         function closeModal() {
-            //console.log('[closeModal] Closing modal.');
             modal.style.display = 'none';
             modal.setAttribute('aria-hidden', 'true');
             currentModalIndex = -1;
             document.body.style.overflow = '';
-            //console.log('[closeModal] Modal closed and body overflow restored.');
+            console.log('[closeModal] Modal closed.');
         }
 
-        // Modal event listeners
+        // Event listener to close modal when clicked outside the image
         modal.addEventListener('click', () => {
             closeModal();
         });
 
+        // Keyboard navigation within the modal
         document.addEventListener('keydown', function(event) {
             if (modal.style.display === 'block') {
                 const currentCharts = pageConfigs[currentPage].charts;
@@ -813,40 +716,38 @@
                     case ' ':
                     case 'Enter':
                         event.preventDefault();
-                        //console.log(`[keydown] ${event.key} pressed. Closing modal.`);
                         closeModal();
                         break;
                     case 'ArrowRight':
                         event.preventDefault();
                         currentModalIndex = (currentModalIndex + 1) % currentCharts.length;
                         modalImg.src = loadedImages[currentCharts[currentModalIndex]];
-                        //console.log(`[keydown] ArrowRight pressed. Showing next image: ${loadedImages[currentCharts[currentModalIndex]]}`);
                         break;
                     case 'ArrowLeft':
                         event.preventDefault();
                         currentModalIndex = (currentModalIndex - 1 + currentCharts.length) % currentCharts.length;
                         modalImg.src = loadedImages[currentCharts[currentModalIndex]];
-                        //console.log(`[keydown] ArrowLeft pressed. Showing previous image: ${loadedImages[currentCharts[currentModalIndex]]}`);
                         break;
                 }
             }
         });
 
-        // Polling Implementation with Global Flag
+        /**
+         * Initializes the polling mechanism to periodically fetch chart updates.
+         */
         function initializePolling() {
-            console.log('[initializePolling] Initializing polling mechanism.');
             let pollTimeoutId = null;
             let nextPollTime = Date.now() + POLLING_INTERVAL;
 
+            /**
+             * Executes the polling function to fetch updates.
+             */
             const pollFunction = async () => {
-                console.log('[pollFunction] Polling function called.');
                 if (!isPollingActive) {
-                    console.log('[pollFunction] Polling is inactive. Exiting.');
                     return;
                 }
 
                 try {
-                    console.log('[pollFunction] Fetching chart info as part of polling.');
                     await fetchChartInfoIfNeeded('Polling');
 
                     if (isPollingActive) {
@@ -856,45 +757,46 @@
                     }
                 } catch (error) {
                     console.error('[pollFunction] Error during polling:', error);
-                    scheduleNextPoll(); // Reschedule even on error
+                    scheduleNextPoll();
                 }
             };
 
+            /**
+             * Schedules the next polling attempt.
+             */
             function scheduleNextPoll() {
                 if (pollTimeoutId) {
                     clearTimeout(pollTimeoutId);
-                    console.log('[scheduleNextPoll] Existing poll timeout cleared.');
                 }
 
                 const timeUntilNextPoll = Math.max(0, nextPollTime - Date.now());
-                console.log(`[scheduleNextPoll] Scheduling next poll in ${timeUntilNextPoll / 1000} seconds.`);
+                console.log(`[scheduleNextPoll] Time until next poll: ${Math.floor(timeUntilNextPoll / 1000)} seconds.`);
                 pollTimeoutId = setTimeout(pollFunction, timeUntilNextPoll);
             }
 
+            /**
+             * Handles changes in page visibility to manage polling.
+             */
             async function handleVisibilityChange() {
-                console.log(`[handleVisibilityChange] Page visibility changed to: ${document.visibilityState}`);
                 if (document.visibilityState === 'visible' && isPollingActive) {
-                    console.log('[handleVisibilityChange] Page is visible and polling is active.');
                     if (pollTimeoutId) {
                         clearTimeout(pollTimeoutId);
-                        console.log('[handleVisibilityChange] Existing poll timeout cleared due to visibility change.');
                     }
 
                     if (Date.now() >= nextPollTime) {
-                        console.log('[handleVisibilityChange] Time to poll immediately after becoming visible.');
+                        console.log('[handleVisibilityChange] Visibility changed to visible. Triggering immediate poll.');
                         await pollFunction();
                     } else {
-                        console.log('[handleVisibilityChange] Scheduling next poll based on remaining time.');
+                        console.log('[handleVisibilityChange] Visibility changed to visible. Scheduling next poll based on remaining time.');
                         scheduleNextPoll();
                     }
-                } else {
-                    console.log('[handleVisibilityChange] Page is not visible or polling is inactive.');
                 }
             }
 
+            // Start polling
             window.startEnhancedPolling = () => {
                 if (isPollingActive) {
-                    console.log('[startEnhancedPolling] Polling is already active. No action taken.');
+                    console.log('[startEnhancedPolling] Polling is already active.');
                     return;
                 }
                 isPollingActive = true;
@@ -903,9 +805,10 @@
                 scheduleNextPoll();
             };
 
+            // Stop polling
             window.stopEnhancedPolling = () => {
                 if (!isPollingActive) {
-                    console.log('[stopEnhancedPolling] Polling is already inactive. No action taken.');
+                    console.log('[stopEnhancedPolling] Polling is already inactive.');
                     return;
                 }
                 isPollingActive = false;
@@ -916,81 +819,54 @@
                 }
             };
 
+            // Listen for visibility changes
             document.addEventListener('visibilitychange', handleVisibilityChange);
             window.addEventListener('focus', handleVisibilityChange);
 
+            // Clean up on page unload
             window.addEventListener('beforeunload', () => {
-                console.log('[beforeunload] Page is unloading. Stopping polling and removing event listeners.');
                 stopEnhancedPolling();
                 document.removeEventListener('visibilitychange', handleVisibilityChange);
                 window.removeEventListener('focus', handleVisibilityChange);
+                console.log('[beforeunload] Page is unloading. Polling stopped and event listeners removed.');
             });
         }
 
-        // Navigation button handlers
+        // Attach event listeners to navigation buttons
         document.querySelectorAll('.nav-button').forEach(button => {
             button.addEventListener('click', () => {
                 const selectedPage = parseInt(button.dataset.page);
-                console.log(`[nav-button] Navigation button clicked for Page ${selectedPage}.`);
                 currentPage = selectedPage;
                 renderPage(currentPage);
             });
         });
 
-        // Page initialization
+        /**
+         * Refreshes the page by fetching latest data and updating the view.
+         * @param {string} trigger - The source triggering the refresh.
+         */
         async function refreshPage(trigger = 'Unknown') {
-            console.log(`[refreshPage] Refreshing page triggered by: ${trigger}.`);
             await fetchChartInfoIfNeeded(trigger);
             await preloadImages();
             renderPage(currentPage);
             startEnhancedPolling();
-            console.log('[refreshPage] Page refreshed and polling restarted.');
         }
 
-        // Enhanced initialization
+        // Initialize the application once the DOM is fully loaded
         window.addEventListener('DOMContentLoaded', () => {
-            console.log('[DOMContentLoaded] DOM fully loaded and parsed. Initializing application.');
-            let initPromise = null;
+            initializePolling();
 
-            const initialize = async () => {
-                if (initPromise) {
-                    console.log('[initialize] Initialization already in progress. Returning existing promise.');
-                    return initPromise;
+            (async () => {
+                try {
+                    await fetchChartInfoIfNeeded('DOMContentLoaded');
+                    await fetchAndParseText();
+                    await preloadImages();
+                    renderPage(currentPage);
+                    startEnhancedPolling();
+                } catch (error) {
+                    console.error('[initialize] Initialization error:', error);
                 }
-
-                initPromise = (async () => {
-                    try {
-                        initializePolling();
-                        console.log('[initialize] Polling mechanism initialized.');
-
-                        // Sequential initialization
-                        await fetchChartInfoIfNeeded('DOMContentLoaded');
-                        console.log('[initialize] Chart info fetched during initialization.');
-
-                        await fetchAndParseText();
-                        console.log('[initialize] Text content fetched.');
-
-                        await preloadImages();
-                        console.log('[initialize] Images preloaded.');
-
-                        renderPage(currentPage);
-                        console.log(`[initialize] Page ${currentPage} rendered.`);
-
-                        startEnhancedPolling();
-                        console.log('[initialize] Polling started.');
-                    } catch (error) {
-                        console.error('[initialize] Initialization error:', error);
-                        // Optionally, display a user-friendly message
-                    } finally {
-                        initPromise = null;
-                        console.log('[initialize] Initialization process completed.');
-                    }
-                })();
-
-                return initPromise;
-            };
-
-            initialize();
+            })();
         });
     </script>
 
