@@ -17,14 +17,206 @@ import logging
 import math
 import numpy as np
 import json
+import requests
+from typing import Optional, Dict, Tuple
 
+# Initialize logger
 logger = logging.getLogger(__name__)
+
+class BTCDataFetcher:
+    """
+    Fetches Bitcoin price data from multiple free sources without requiring authentication.
+    Utilizes fallback mechanisms to ensure data retrieval even if some sources fail.
+    """
+
+    def _fetch_yahoo(self) -> Optional[Dict]:
+        """Fetches Bitcoin data from Yahoo Finance."""
+        try:
+            btc = yf.Ticker("BTC-USD")
+            current_price = btc.fast_info['lastPrice']
+            hist = btc.history(period='5d', interval='1d')
+            if len(hist) < 2:
+                return None
+
+            last_two_days = hist.tail(2)
+            return {
+                'current_price': current_price,
+                'current_time': datetime.now(timezone.utc).isoformat(),
+                'last_close': last_two_days['Close'].iloc[-2],
+                'last_close_time': last_two_days.index[-2].strftime('%Y-%m-%d %H:%M:%S UTC')
+            }
+        except Exception as e:
+            logger.warning(f"Yahoo Finance fetch failed: {e}")
+            return None
+
+    def _fetch_coingecko(self) -> Optional[Dict]:
+        """Fetches Bitcoin data from CoinGecko API."""
+        try:
+            response = requests.get(
+                'https://api.coingecko.com/api/v3/simple/price',
+                params={'ids': 'bitcoin', 'vs_currencies': 'usd'},
+                timeout=5
+            )
+            response.raise_for_status()
+            data = response.json()
+            current_price = data['bitcoin']['usd']
+            current_time = datetime.now(timezone.utc).isoformat()
+            return {
+                'current_price': current_price,
+                'current_time': current_time,
+                'last_close': None,
+                'last_close_time': None
+            }
+        except Exception as e:
+            logger.warning(f"CoinGecko fetch failed: {e}")
+            return None
+
+    def _fetch_blockchain_info(self) -> Optional[Dict]:
+        """Fetches Bitcoin data from Blockchain.com API."""
+        try:
+            response = requests.get(
+                'https://blockchain.info/ticker',
+                timeout=5
+            )
+            response.raise_for_status()
+            data = response.json()
+            current_price = data['USD']['last']
+            current_time = datetime.now(timezone.utc).isoformat()
+            return {
+                'current_price': current_price,
+                'current_time': current_time,
+                'last_close': None,
+                'last_close_time': None
+            }
+        except Exception as e:
+            logger.warning(f"Blockchain.info fetch failed: {e}")
+            return None
+
+    def _fetch_bitfinex(self) -> Optional[Dict]:
+        """Fetches Bitcoin data from Bitfinex API."""
+        try:
+            response = requests.get(
+                'https://api-pub.bitfinex.com/v2/ticker/tBTCUSD',
+                timeout=5
+            )
+            response.raise_for_status()
+            data = response.json()
+            current_price = data[6]  # Last price is at index 6
+            current_time = datetime.now(timezone.utc).isoformat()
+            return {
+                'current_price': current_price,
+                'current_time': current_time,
+                'last_close': None,
+                'last_close_time': None
+            }
+        except Exception as e:
+            logger.warning(f"Bitfinex fetch failed: {e}")
+            return None
+
+    def _fetch_kraken(self) -> Optional[Dict]:
+        """Fetches Bitcoin data from Kraken's public API."""
+        try:
+            response = requests.get(
+                'https://api.kraken.com/0/public/Ticker?pair=XBTUSD',
+                timeout=5
+            )
+            response.raise_for_status()
+            data = response.json()
+            current_price = float(data['result']['XXBTZUSD']['c'][0])
+            current_time = datetime.now(timezone.utc).isoformat()
+            return {
+                'current_price': current_price,
+                'current_time': current_time,
+                'last_close': None,
+                'last_close_time': None
+            }
+        except Exception as e:
+            logger.warning(f"Kraken fetch failed: {e}")
+            return None
+
+    def _fetch_gemini(self) -> Optional[Dict]:
+        """Fetches Bitcoin data from Gemini's public API."""
+        try:
+            response = requests.get(
+                'https://api.gemini.com/v1/pubticker/btcusd',
+                timeout=5
+            )
+            response.raise_for_status()
+            data = response.json()
+            current_price = float(data['last'])
+            current_time = datetime.now(timezone.utc).isoformat()
+            return {
+                'current_price': current_price,
+                'current_time': current_time,
+                'last_close': None,
+                'last_close_time': None
+            }
+        except Exception as e:
+            logger.warning(f"Gemini fetch failed: {e}")
+            return None
+
+    def _fetch_bybit(self) -> Optional[Dict]:
+        """Fetches Bitcoin data from Bybit's public API."""
+        try:
+            response = requests.get(
+                'https://api.bybit.com/v2/public/tickers?symbol=BTCUSD',
+                timeout=5
+            )
+            response.raise_for_status()
+            data = response.json()
+            current_price = float(data['result'][0]['last_price'])
+            current_time = datetime.now(timezone.utc).isoformat()
+            return {
+                'current_price': current_price,
+                'current_time': current_time,
+                'last_close': None,
+                'last_close_time': None
+            }
+        except Exception as e:
+            logger.warning(f"Bybit fetch failed: {e}")
+            return None
+
+    def get_btc_data(self) -> Tuple[Optional[float], Optional[str], Optional[float], Optional[str]]:
+        """
+        Attempts to fetch Bitcoin price data from multiple sources.
+        Returns the first successful result.
+
+        Returns:
+            tuple: (current_price, current_time, last_close, last_close_time)
+        """
+        sources = [
+            self._fetch_yahoo,
+            self._fetch_coingecko,
+            self._fetch_blockchain_info,
+            self._fetch_bitfinex,
+            self._fetch_kraken,
+            self._fetch_gemini,
+            self._fetch_bybit
+        ]
+
+        for source in sources:
+            data = source()
+            if data is not None:
+                logger.info(f"Successfully fetched BTC data from {source.__name__}")
+                return (
+                    data['current_price'],
+                    data['current_time'],
+                    data['last_close'],
+                    data['last_close_time']
+                )
+
+        logger.error("Failed to fetch BTC data from all sources")
+        return None, None, None, None
 
 def add_bottom_credits(fig, btc_price=None, time_str_gmt=None, website=None):
     """
-    Places two lines of text along the bottom of the figure:
-    - Credits text on the left
-    - BTC price/time/website info on the right
+    Adds credit text and Bitcoin price information at the bottom of the chart.
+
+    Args:
+        fig (Figure): The matplotlib figure to add credits to.
+        btc_price (float, optional): Current Bitcoin price.
+        time_str_gmt (str, optional): Timestamp in GMT.
+        website (str, optional): Website URL for reference.
     """
     left_text = (
         "Chart by @Nosredna. Thanks to @Giovann35084111, @ChartsBtc, "
@@ -60,15 +252,15 @@ def add_bottom_credits(fig, btc_price=None, time_str_gmt=None, website=None):
 
 def main():
     """
-    Main function for creating multiple Bitcoin charts using local CSV data,
-    optionally fetching new rows from Yahoo Finance, then adding a current price
-    row (in-memory only), and finally producing price charts based on the data.
+    Main function for generating multiple Bitcoin charts using local CSV data.
+    It optionally fetches new data from Yahoo Finance, adds the current price,
+    and produces various price charts based on the combined data.
     """
     parser = argparse.ArgumentParser(
         description='Generate Bitcoin cycle charts with various configurations.'
     )
 
-    # Only one command-line argument remains for setting log-level:
+    # Command-line argument for setting log level
     parser.add_argument(
         '--log-level',
         type=str,
@@ -79,7 +271,7 @@ def main():
 
     args = parser.parse_args()
 
-    # Configure logging output based on command-line option
+    # Configure logging based on user input
     logging.basicConfig(
         level=getattr(logging, args.log_level.upper()),
         format='%(asctime)s - %(levelname)s - %(message)s',
@@ -87,14 +279,14 @@ def main():
     )
     logger = logging.getLogger()
 
-    # Contains static values such as path to CSV, color sets, offsets, and style settings
+    # Configuration settings
     CONFIG = {
         "CYCLE_OFFSETS": [12, 8, 4],
         "GENESIS_DATE": pd.to_datetime('2009-01-03'),
         "CSV_FILE_PATH": 'bitcoin.csv',
         "GHOST_COLORS": ['#b2dfdb', '#c5cae9', '#bbdefb'],
         "CURRENT_CYCLE_COLOR": 'orange',
-        "CREDITS_BOX_COLOR": '#fde4d0',  # Not actively used but preserved
+        "CREDITS_BOX_COLOR": '#fde4d0',  # Reserved for potential future use
         "SUPPORT_LINE_COLOR": 'dimgray',
 
         "TITLE_FONT_SIZE": 30,
@@ -113,7 +305,7 @@ def main():
         "SUBTITLE_Y_OFFSET": 1.003
     }
 
-    # Defines which charts to produce, their date ranges, and file output targets
+    # Define chart configurations
     CHARTS = {
         "powerlaw": [
             {
@@ -171,7 +363,7 @@ def main():
         ]
     }
 
-    # Dynamically adds a single-year chart config for the current year
+    # Dynamically add current year chart configurations
     current_year = pd.to_datetime('today').year
     for mode in ["powerlaw", "quantiles", "ghostly_days"]:
         if mode == "powerlaw":
@@ -190,7 +382,7 @@ def main():
             'subtitle': f'1 Jan {current_year} through 31 Dec {current_year}'
         })
 
-    # Updates the titles for price charts based on predefined text arrays
+    # Update chart titles based on predefined mappings
     chart_titles_map = {
         "powerlaw": [
             "Power Law 4 year view",
@@ -216,22 +408,23 @@ def main():
                 CHARTS[mode][i]['title'] = chart_titles_map[mode][price_chart_count]
                 price_chart_count += 1
 
-    # Functions used to compute the "powerlaw" chart data
+    # Mathematical functions for "powerlaw" charts
     def support_powerlaw(days):
         return 10**-17.351 * days**5.836
 
     def upper_bound_powerlaw(days):
         return (1 + 10**(1.836 - days * 0.0002323)) * support_powerlaw(days)
 
-    # Functions used to compute the "quantiles" chart data
+    # Mathematical functions for "quantiles" charts
     def support_quantiles(days):
         return math.exp(-41.72) * days ** 6.02
 
     def upper_bound_quantiles(days):
         return math.exp(-28.32) * days ** 4.72
 
-    # Functions handling CSV loading and merging
+    # Functions for CSV data handling
     def load_local_csv(file_path):
+        """Loads local CSV data if available."""
         if os.path.exists(file_path):
             logger.info(f"Loading local CSV data from '{file_path}'...")
             btc_csv = pd.read_csv(file_path)
@@ -247,18 +440,24 @@ def main():
 
     def load_yahoo_data(start_date, end_date):
         """
-        Pulls data from Yahoo Finance for BTC-USD within the specified date range,
-        normalizing columns if necessary.
+        Fetches BTC-USD data from Yahoo Finance within the specified date range.
+
+        Args:
+            start_date (str): Start date in 'YYYY-MM-DD' format.
+            end_date (str): End date in 'YYYY-MM-DD' format.
+
+        Returns:
+            DataFrame: Fetched data or empty DataFrame if failed.
         """
         logger.info(f"Fetching BTC-USD data from Yahoo Finance: {start_date} to {end_date}...")
         btc_yf = yf.download('BTC-USD', start=start_date, end=end_date)
         if not btc_yf.empty:
+            # Normalize columns if they are in MultiIndex format
             if isinstance(btc_yf.columns, pd.MultiIndex):
                 btc_yf.columns = btc_yf.columns.get_level_values(0)
             btc_yf.reset_index(inplace=True)
             logger.info(f"Yahoo data after normalizing columns:\n{btc_yf.head()}")
             logger.info(f"Fetched {len(btc_yf)} rows from Yahoo Finance.")
-            btc_yf.reset_index(inplace=True)
             btc_yf = btc_yf.rename(columns={'Date': 'Start'})
         else:
             logger.warning("Warning: No data fetched from Yahoo Finance.")
@@ -266,8 +465,14 @@ def main():
 
     def combine_data(local_data, yahoo_data):
         """
-        Combines local CSV DataFrame with new Yahoo rows, dropping duplicates
-        by 'Start' and sorting by date. Returns the merged DataFrame.
+        Combines local CSV data with new Yahoo Finance data.
+
+        Args:
+            local_data (DataFrame): Existing local data.
+            yahoo_data (DataFrame): Newly fetched Yahoo data.
+
+        Returns:
+            DataFrame: Combined and sorted data.
         """
         logger.info("Combining local CSV data with Yahoo Finance data...")
         combined = pd.concat([local_data, yahoo_data], ignore_index=True)
@@ -276,34 +481,11 @@ def main():
         logger.info(f"Combined dataset has {len(combined)} rows.")
         return combined
 
-    def get_btc_data():
-        """
-        Retrieves current BTC price, time in UTC, last daily close price, 
-        and time of that last close from yfinance.
-        """
-        try:
-            btc = yf.Ticker("BTC-USD")
-            current_price = btc.fast_info['lastPrice']
-            current_time = datetime.now(timezone.utc).isoformat()
+    # Retrieve live Bitcoin data with fallback sources
+    fetcher = BTCDataFetcher()
+    current_price, current_time, last_close, last_close_time = fetcher.get_btc_data()
 
-            hist = btc.history(period='5d', interval='1d')
-            if len(hist) < 2:
-                print("Not enough historical data to fetch the last close price.")
-                return current_price, current_time, None, None
-
-            last_two_days = hist.tail(2)
-            last_close = last_two_days['Close'].iloc[-2]
-            last_close_time = last_two_days.index[-2].strftime('%Y-%m-%d %H:%M:%S UTC')
-            return current_price, current_time, last_close, last_close_time
-
-        except Exception as e:
-            print(f"Error fetching data: {e}")
-            return None, None, None, None
-
-    # Retrieve live BTC info
-    current_price, current_time, last_close, last_close_time = get_btc_data()
-
-    # Display basic info about current and last BTC price
+    # Display current and last close price with formatting
     BOLD = "\033[1m"
     GREEN = "\033[32m"
     RESET = "\033[0m"
@@ -313,7 +495,7 @@ def main():
     if last_close:
         print(f"Bitcoin's last daily close price ({last_close_time}): {BOLD}{GREEN}${last_close:,.2f}{RESET}")
 
-    # Write minimal info to a JSON file for future reference
+    # Save current price info to a JSON file
     info = {
         "current_price": current_price,
         "timestamp_gmt": current_time,
@@ -328,7 +510,7 @@ def main():
     except Exception as e:
         logger.error(f"Failed to write JSON file: {e}")
 
-    # Load local CSV and optionally fetch new Yahoo data if needed
+    # Load local CSV data
     local_data = load_local_csv(CONFIG["CSV_FILE_PATH"])
     today = pd.to_datetime('today').normalize()
 
@@ -340,14 +522,14 @@ def main():
         start_date_for_yahoo = latest_csv_date + pd.Timedelta(days=1)
         if start_date_for_yahoo < today:
             logger.info(f"Attempting to fetch Yahoo Finance data from {start_date_for_yahoo.date()} to {today.date()}...")
-            yahoo_data = load_yahoo_data(start_date_for_yahoo, today)
+            yahoo_data = load_yahoo_data(start_date_for_yahoo.strftime('%Y-%m-%d'), today.strftime('%Y-%m-%d'))
 
         if not yahoo_data.empty:
             combined_data = combine_data(local_data, yahoo_data)
 
             original_cols = local_data.columns.tolist()
 
-            # Identify which rows were newly added
+            # Identify and prepare new rows
             new_rows_mask = combined_data['Start'] > latest_csv_date
             new_rows_df = combined_data.loc[new_rows_mask].copy()
 
@@ -355,7 +537,7 @@ def main():
             if 'Close' in new_rows_df.columns:
                 new_rows_df['Open'] = new_rows_df['Close']
                 new_rows_df['High'] = new_rows_df['Close']
-                new_rows_df['Low']  = new_rows_df['Close']
+                new_rows_df['Low'] = new_rows_df['Close']
             if 'Volume' not in new_rows_df.columns:
                 new_rows_df['Volume'] = 0
             if 'Market Cap' not in new_rows_df.columns:
@@ -363,9 +545,10 @@ def main():
             if 'End' not in new_rows_df.columns:
                 new_rows_df['End'] = new_rows_df['Start'] + pd.Timedelta(days=1)
 
+            # Reindex to match original columns
             new_rows_df = new_rows_df.reindex(columns=original_cols)
 
-            # Recombine new data with local, then overwrite CSV with newest rows on top
+            # Update local CSV with new data
             updated_df = pd.concat([local_data, new_rows_df], ignore_index=True)
             updated_df.drop_duplicates(subset=['Start'], keep='last', inplace=True)
             updated_df.sort_values(by='Start', inplace=True)
@@ -381,7 +564,7 @@ def main():
         logger.error("No data available from the local CSV file. Exiting.")
         raise ValueError("No data available from the local CSV file. Exiting.")
 
-    # Insert the current price row in memory, not into the actual CSV
+    # Insert the current price as today's data point (in-memory only)
     if current_price:
         logger.info(f"Adding current price (${current_price:,.2f}) as today's data point.")
         current_row = pd.DataFrame({
@@ -398,10 +581,10 @@ def main():
         combined_data = pd.concat([combined_data, current_row], ignore_index=True)
         combined_data.sort_values(by='Start', inplace=True)
 
-    # Compute day offsets relative to the 2009 Genesis date
+    # Calculate days since Genesis date
     combined_data['days'] = (combined_data['Start'] - CONFIG["GENESIS_DATE"]).dt.days
 
-    # Compute numeric columns for powerlaw and quantiles
+    # Calculate support and upper bound for powerlaw
     combined_data['support_powerlaw'] = support_powerlaw(combined_data['days'])
     combined_data['upper_bound_powerlaw'] = upper_bound_powerlaw(combined_data['days'])
     combined_data['ratio_powerlaw'] = (
@@ -409,13 +592,14 @@ def main():
         / (combined_data['upper_bound_powerlaw'] - combined_data['support_powerlaw'])
     )
 
+    # Calculate support and upper bound for quantiles
     combined_data['support_quantiles'] = support_quantiles(combined_data['days'])
     combined_data['upper_bound_quantiles'] = upper_bound_quantiles(combined_data['days'])
     combined_data['ratio_quantiles'] = (
         (combined_data['Close'] - combined_data['support_quantiles'])
         / (combined_data['upper_bound_quantiles'] - combined_data['support_quantiles'])
     )
-    
+
     # Check for gaps in the daily data
     date_range = pd.date_range(start=combined_data['Start'].min(), end=combined_data['Start'].max(), freq='D')
     missing_dates = date_range.difference(combined_data['Start'])
@@ -426,21 +610,23 @@ def main():
     else:
         logger.info("No missing dates in the combined data.")
 
+    # Determine the most recent data point
     recent = today if today in combined_data['Start'].values else combined_data['Start'].max()
     logger.info(f"Using '{recent.date()}' as the most recent data point.")
 
-    # Handle UTC time string for chart credits
+    # Format UTC time for credits
     if current_time:
         dt_utc = datetime.fromisoformat(current_time)
         gmt_time_str = dt_utc.strftime("%d %b %Y %H:%M UTC")
     else:
         gmt_time_str = ""
 
-    # Prepare certain computed values for the powerlaw/quantiles price charts
+    # Compute values for powerlaw and quantiles charts
     current_data_powerlaw = combined_data.loc[combined_data['Start'] == recent]
     if current_data_powerlaw.empty:
         raise ValueError(f"No data found for the recent date: {recent.date()}")
 
+    # Extract current powerlaw values
     current_support_powerlaw = current_data_powerlaw['support_powerlaw'].values[0]
     current_upper_bound_powerlaw = current_data_powerlaw['upper_bound_powerlaw'].values[0]
     current_ratio_powerlaw = current_data_powerlaw['ratio_powerlaw'].values[0]
@@ -448,6 +634,7 @@ def main():
         current_upper_bound_powerlaw - current_support_powerlaw
     )
 
+    # Calculate ghost prices for powerlaw
     prices_powerlaw = []
     for offset in CONFIG["CYCLE_OFFSETS"]:
         past_date = recent - pd.DateOffset(years=offset)
@@ -463,6 +650,7 @@ def main():
             prices_powerlaw.append(None)
     prices_powerlaw.append(current_price_powerlaw)
 
+    # Extract current quantiles values
     current_support_quantiles = current_data_powerlaw['support_quantiles'].values[0]
     current_upper_bound_quantiles = current_data_powerlaw['upper_bound_quantiles'].values[0]
     current_ratio_quantiles = current_data_powerlaw['ratio_quantiles'].values[0]
@@ -471,6 +659,7 @@ def main():
         * (current_upper_bound_quantiles - current_support_quantiles)
     )
 
+    # Calculate ghost prices for quantiles
     prices_quantiles = []
     for offset in CONFIG["CYCLE_OFFSETS"]:
         past_date = recent - pd.DateOffset(years=offset)
@@ -486,10 +675,11 @@ def main():
             prices_quantiles.append(None)
     prices_quantiles.append(current_price_quantiles)
 
+    # Index data by 'Start' for easy access
     data_by_start = combined_data.set_index('Start')
     recent_str = recent.strftime('%d-%b-%Y')
 
-    # Define the structure holding configuration for powerlaw and quantiles
+    # Configuration for different chart modes
     modes = {
         'powerlaw': {
             'ratio_col': 'ratio_powerlaw',
@@ -537,14 +727,21 @@ def main():
 
     def add_credits_box(ax, credits_text):
         """
-        Unused placeholder for a special text box. This is left in case it's needed later.
+        Placeholder for adding a custom credits box if needed in the future.
+
+        Args:
+            ax (Axes): The matplotlib axes to add the box to.
+            credits_text (str): The text to display in the box.
         """
         pass
 
     def add_legend_box(ax, box_position):
         """
-        Draws a black box for text to be placed on top of. 
-        The text itself is created via ax.text calls in the plotting functions.
+        Draws a black box on the chart for legend placement.
+
+        Args:
+            ax (Axes): The matplotlib axes to add the box to.
+            box_position (tuple): Position and size of the box in axes coordinates.
         """
         legend_box = FancyBboxPatch(
             (box_position[0], box_position[1]),
@@ -562,8 +759,14 @@ def main():
 
     def plot_ghost_cycles(ax, plot_date_range, ratio_col, support_values, upper_bound_values):
         """
-        Plots the 'ghost cycles' by shifting the date range back by different offsets,
-        retrieving ratio values, and mapping them to price on the current timescale.
+        Plots ghost cycles by shifting the date range back by specified offsets.
+
+        Args:
+            ax (Axes): The matplotlib axes to plot on.
+            plot_date_range (DatetimeIndex): The range of dates to plot.
+            ratio_col (str): The column name for ratio values.
+            support_values (array-like): Support line values.
+            upper_bound_values (array-like): Upper bound line values.
         """
         for offset, color in zip(CONFIG["CYCLE_OFFSETS"], CONFIG["GHOST_COLORS"]):
             shifted_dates = plot_date_range - pd.DateOffset(years=offset)
@@ -574,7 +777,12 @@ def main():
 
     def add_equations_text(ax, eq_text, alpha_val):
         """
-        Shows a box of math equations on the top-right side of the chart.
+        Adds mathematical equations as text on the chart.
+
+        Args:
+            ax (Axes): The matplotlib axes to add text to.
+            eq_text (str): The LaTeX-formatted equations.
+            alpha_val (float): Transparency value for the text background.
         """
         ax.text(
             0.93,
@@ -591,8 +799,12 @@ def main():
 
     def configure_x_axis(ax, plot_start, plot_end):
         """
-        Configures the x-axis to show yearly ticks (in January), with minor ticks 
-        for months, and sets the bounds to the requested start/end dates.
+        Configures the x-axis with yearly and monthly ticks.
+
+        Args:
+            ax (Axes): The matplotlib axes to configure.
+            plot_start (Timestamp): Start date of the plot.
+            plot_end (Timestamp): End date of the plot.
         """
         ax.set_xticks(pd.date_range(start=plot_start, end=plot_end, freq='YS'))
         ax.set_xticklabels(
@@ -606,13 +818,21 @@ def main():
 
     def plot_price_chart(mode, plot_start, plot_end, filename, title, subtitle):
         """
-        Creates a price chart for 'powerlaw' or 'quantiles' using the data in combined_data.
-        This includes ghost cycles, support/upper lines, and a legend drawn on top.
+        Generates and saves a price chart for the specified mode.
+
+        Args:
+            mode (str): The chart mode ('powerlaw' or 'quantiles').
+            plot_start (Timestamp): Start date of the plot.
+            plot_end (Timestamp): End date of the plot.
+            filename (str): Path to save the generated chart.
+            title (str): Title of the chart.
+            subtitle (str): Subtitle of the chart.
         """
         mode_info = modes[mode]
         plot_date_range = pd.date_range(start=plot_start, end=plot_end, freq='D')
         days = (plot_date_range - CONFIG["GENESIS_DATE"]).days
 
+        # Calculate support and upper bound values based on mode
         if mode == 'powerlaw':
             support_values = support_powerlaw(days)
             upper_bound_values = upper_bound_powerlaw(days)
@@ -630,6 +850,7 @@ def main():
         alpha_val = mode_info['alpha_val']
         label_names = mode_info['price_label_names']
 
+        # Filter data for the current cycle
         current_cycle_data = combined_data[
             (combined_data['Start'] >= plot_start) & (combined_data['Start'] <= plot_end)
         ]
@@ -639,25 +860,32 @@ def main():
             * (current_cycle_data[mode_info['upper_col']] - current_cycle_data[mode_info['support_col']])
         )
 
+        # Initialize plot
         fig, ax = plt.subplots(figsize=(15, 10))
         ax.set_facecolor('white')
 
+        # Plot ghost cycles and support lines
         plot_ghost_cycles(ax, plot_date_range, ratio_col, support_values, upper_bound_values)
-        ax.plot(plot_date_range, support_values, color='dimgray', linestyle='-', linewidth=0.5)
-        ax.plot(plot_date_range, upper_bound_values, color='dimgray', linestyle='-', linewidth=0.5)
+        ax.plot(plot_date_range, support_values, color=CONFIG["SUPPORT_LINE_COLOR"], linestyle='-', linewidth=0.5)
+        ax.plot(plot_date_range, upper_bound_values, color=CONFIG["SUPPORT_LINE_COLOR"], linestyle='-', linewidth=0.5)
 
+        # Plot current cycle
         ax.plot(current_cycle_data['Start'], price_vals, color=CONFIG["CURRENT_CYCLE_COLOR"], linewidth=2)
         ax.scatter(recent, curr_price, edgecolor='black', facecolor='none', marker='o', s=100, zorder=5)
 
+        # Configure axes
         configure_x_axis(ax, plot_start, plot_end)
         ax.yaxis.set_major_locator(MultipleLocator(50000))
         ax.yaxis.set_minor_locator(MultipleLocator(10000))
 
+        # Add grid
         ax.grid(which='major', linestyle='-', linewidth=1, color='dimgray')
         ax.grid(which='minor', linestyle='-', linewidth=0.5, color='lightgray')
 
+        # Add legend box
         add_legend_box(ax, CONFIG["LEGEND_BOX_POSITIONS"][mode])
 
+        # Prepare price labels
         max_label_len = max(len(lbl) for lbl in label_names)
         price_strings = []
         for i in range(len(CONFIG["CYCLE_OFFSETS"]) + 1):
@@ -668,19 +896,23 @@ def main():
                 price_str = f"{'N/A':>10}"
             price_strings.append(f"{label_names[i]:<{max_label_len + 2}}{price_str}")
 
+        # Add support and upper bound labels
         price_strings.append(f"{label_names[-2]:<{max_label_len + 2}}{curr_support:>10,.2f}")
         price_strings.append(f"{label_names[-1]:<{max_label_len + 2}}{curr_upper:>10,.2f}")
 
+        # Positioning for price labels
         x_pos = 0.04
         y_pos = 0.95
         y_step = 0.04
 
+        # Add recent date
         ax.text(
             x_pos, y_pos, recent_str,
             transform=ax.transAxes, fontsize=16, verticalalignment='top',
             fontfamily='monospace', zorder=5, color='white'
         )
 
+        # Add cycle price labels
         for i, label_line in enumerate(price_strings[:4]):
             y_pos -= y_step
             color = CONFIG["GHOST_COLORS"][i] if i < len(CONFIG["GHOST_COLORS"]) else CONFIG["CURRENT_CYCLE_COLOR"]
@@ -690,6 +922,7 @@ def main():
                 fontfamily='monospace', zorder=5, color=color
             )
 
+        # Add support and upper bound labels
         for label_line in price_strings[4:]:
             y_pos -= y_step
             ax.text(
@@ -698,8 +931,10 @@ def main():
                 fontfamily='monospace', zorder=5, color='white'
             )
 
+        # Add equations text
         add_equations_text(ax, eq_text, alpha_val)
 
+        # Set chart titles
         prefixed_title = f"Bitcoin 4-Year Cycles with Ghosts / {title}"
         ax.set_title(prefixed_title, fontsize=CONFIG["TITLE_FONT_SIZE"], pad=CONFIG["TITLE_PADDING"])
         ax.text(
@@ -710,6 +945,7 @@ def main():
             va='bottom'
         )
 
+        # Add bottom credits
         add_bottom_credits(
             fig,
             btc_price=current_price,
@@ -717,12 +953,13 @@ def main():
             website="https://nosredna-btc.github.io/btc-cycle-charts"
         )
 
+        # Finalize and save the plot
         plt.tight_layout()
         plt.savefig(filename, dpi=300, bbox_inches='tight')
         plt.close(fig)
         logger.info(f"({mode.capitalize()}) Saved the plot to '{filename}' and closed the figure.")
 
-    # Generate only the price charts for powerlaw and quantiles
+    # Generate price charts for 'powerlaw' and 'quantiles' modes
     for mode in ["powerlaw", "quantiles"]:
         for chart_config in CHARTS[mode]:
             if chart_config['type'] == 'price':
@@ -733,13 +970,16 @@ def main():
                 subtitle = chart_config['subtitle']
                 plot_price_chart(mode, plot_start, plot_end, filename, title, subtitle)
 
-    # Remainder deals with "ghostly_days" approach
+    # Additional functions and configurations for "ghostly_days" approach
     def support(days):
+        """Support function used in 'ghostly_days' chart."""
         return np.where(days > 0, 10**-17.351 * days**5.836, np.nan)
 
     def inverse_support(price):
+        """Inverse of the support function to calculate days from price."""
         return (price / 10**-17.351) ** (1 / 5.836)
 
+    # Calculate additional metrics for 'ghostly_days'
     combined_data['Days Since Genesis'] = (combined_data['Start'] - CONFIG["GENESIS_DATE"]).dt.days
     combined_data['Support'] = support(combined_data['Days Since Genesis'])
     combined_data['Inverse Days'] = inverse_support(combined_data['Close'])
@@ -756,12 +996,19 @@ def main():
     current_price_gd = current_data_gd['Close'].values[0]
 
     def y_axis_formatter(x, pos):
+        """Formats y-axis labels as integers without decimals."""
         return f'{int(x)}'
 
     def plot_price_chart_gd(plot_start, plot_end, filename, title, subtitle):
         """
-        Creates the 'Days Ahead' style chart by shifting ratio values and 
-        deriving new price lines for older cycles that are mapped to future data.
+        Generates and saves a 'Days Ahead' style price chart.
+
+        Args:
+            plot_start (Timestamp): Start date of the plot.
+            plot_end (Timestamp): End date of the plot.
+            filename (str): Path to save the generated chart.
+            title (str): Title of the chart.
+            subtitle (str): Subtitle of the chart.
         """
         plot_date_range = pd.date_range(start=plot_start, end=plot_end, freq='D')
         days_since_genesis = (plot_date_range - CONFIG["GENESIS_DATE"]).days
@@ -779,7 +1026,7 @@ def main():
         if current_data_gd_local.empty:
             raise ValueError(f"No data found for the recent date: {recent_gd_local.date()}")
 
-        # Shifts each cycle by the specified offsets and plots them
+        # Plot ghost cycles for 'ghostly_days'
         for offset, color in zip(CONFIG["CYCLE_OFFSETS"], CONFIG["GHOST_COLORS"]):
             shifted_dates = plot_date_range - pd.DateOffset(years=offset)
             shifted_data = combined_data.set_index('Start').reindex(shifted_dates, method='nearest', tolerance='1D')
@@ -812,7 +1059,7 @@ def main():
             else:
                 prices.append(None)
 
-        # Plots the current cycle line and the last data point
+        # Plot current cycle line and last data point
         current_cycle_data_gd = combined_data[
             (combined_data['Start'] >= plot_start) & (combined_data['Start'] <= plot_end)
         ]
@@ -826,11 +1073,12 @@ def main():
         all_prices.extend(current_cycle_data_gd['Close'].values)
         prices.append(current_price_gd)
 
-        # Draws the support line for the entire plot
-        ax.plot(plot_date_range, support_values, color='dimgray', linestyle='-', linewidth=0.5)
+        # Draw support line
+        ax.plot(plot_date_range, support_values, color=CONFIG["SUPPORT_LINE_COLOR"], linestyle='-', linewidth=0.5)
         all_prices.extend(support_values[~np.isnan(support_values)])
         prices.append(current_support_gd)
 
+        # Prepare labels for the legend
         label_names = [
             "Cycle 1 '12-'15:",
             "Cycle 2 '16-'19:",
@@ -846,10 +1094,12 @@ def main():
             else:
                 price_strings.append(f"{'N/A':>12}")
 
+        # Positioning for labels
         x_pos = 0.04
         y_pos = 0.95
         y_step = 0.04
 
+        # Add recent date
         ax.text(
             x_pos, y_pos,
             recent_gd_local.strftime('%d-%b-%Y'),
@@ -858,6 +1108,7 @@ def main():
             zorder=5, color='white'
         )
 
+        # Add cycle price labels
         for i, label in enumerate(label_names):
             y_pos -= y_step
             color = (
@@ -873,6 +1124,7 @@ def main():
                 zorder=5, color=color
             )
 
+        # Configure x-axis
         ax.set_xticks(pd.date_range(start=plot_start, end=plot_end, freq='YS'))
         ax.set_xticklabels(
             [date.strftime('%Y') for date in pd.date_range(start=plot_start, end=plot_end, freq='YS')],
@@ -883,6 +1135,7 @@ def main():
         plt.setp(ax.get_xminorticklabels(), rotation=90, color='dimgray')
         ax.set_xlim(left=plot_start, right=plot_end)
 
+        # Adjust y-axis limits based on data
         if all_prices:
             y_min = min(all_prices) * 0.9
             y_max = max(all_prices) * 1.1
@@ -894,11 +1147,14 @@ def main():
             ax.yaxis.set_minor_locator(MultipleLocator(10000))
             ax.yaxis.set_major_formatter(FuncFormatter(y_axis_formatter))
 
+            # Add grid lines
             ax.grid(which='major', linestyle='-', linewidth=1, color='dimgray')
             ax.grid(which='minor', linestyle='--', linewidth=0.5, color='lightgray')
 
+        # Add legend box
         add_legend_box(ax, CONFIG["LEGEND_BOX_POSITIONS"]["ghostly_days"])
 
+        # Add bottom credits
         add_bottom_credits(
             fig,
             btc_price=current_price,
@@ -906,6 +1162,7 @@ def main():
             website="https://nosredna-btc.github.io/btc-cycle-charts"
         )
 
+        # Add equations text
         equations_text_gd = (
             r"$\bf{Support:}$" "\n"
             r"$10^{-17.351} \times days^{5.836}$"
@@ -922,6 +1179,7 @@ def main():
             zorder=5
         )
 
+        # Set chart titles
         prefixed_title = f"Bitcoin 4-Year Cycles with Ghosts / {title}"
         ax.set_title(prefixed_title, fontsize=CONFIG["TITLE_FONT_SIZE"], pad=CONFIG["TITLE_PADDING"])
         ax.text(
@@ -930,12 +1188,13 @@ def main():
             transform=ax.transAxes, ha='center', va='bottom'
         )
 
+        # Finalize and save the plot
         plt.tight_layout()
         plt.savefig(filename, dpi=300, bbox_inches='tight')
         plt.close(fig)
         logger.info(f"(ghostly_days) Saved the plot to '{filename}' and closed the figure.")
 
-    # Build the ghostly_days charts from CHARTS
+    # Generate 'ghostly_days' charts
     for chart_config in CHARTS["ghostly_days"]:
         if chart_config['type'] == 'price':
             plot_start = pd.to_datetime(chart_config['start'])
