@@ -20,6 +20,11 @@ import json
 import requests
 from typing import Optional, Dict, Tuple
 
+# ANSI escape codes for formatting
+BOLD = "\033[1m"
+GREEN = "\033[32m"
+RESET = "\033[0m"
+
 # Initialize logger
 logger = logging.getLogger(__name__)
 
@@ -463,6 +468,78 @@ def main():
             logger.warning("Warning: No data fetched from Yahoo Finance.")
         return btc_yf
 
+    def load_cryptocompare_data(start_date, end_date):
+        """Fallback for historical data if Yahoo fails"""
+        try:
+            url = f"https://min-api.cryptocompare.com/data/v2/histoday"
+            params = {
+                'fsym': 'BTC',
+                'tsym': 'USD',
+                'limit': 2000  # Max allowed per request
+            }
+            response = requests.get(url, params=params, timeout=10)
+            data = response.json()['Data']['Data']
+        
+            df = pd.DataFrame(data)
+            df['Start'] = pd.to_datetime(df['time'], unit='s')
+            df = df.rename(columns={
+                'open': 'Open',
+                'high': 'High',
+                'low': 'Low',
+                'close': 'Close',
+                'volumefrom': 'Volume'
+            })
+            return df
+        except Exception as e:
+            logger.warning(f"CryptoCompare fetch failed: {e}")
+            return pd.DataFrame()
+
+    def load_binance_data(start_date, end_date):
+        """Another fallback for historical data"""
+        try:
+            start_ts = int(pd.Timestamp(start_date).timestamp() * 1000)
+            end_ts = int(pd.Timestamp(end_date).timestamp() * 1000)
+            url = f"https://api.binance.com/api/v3/klines"
+            params = {
+                'symbol': 'BTCUSDT',
+                'interval': '1d',
+                'startTime': start_ts,
+                'endTime': end_ts
+            }
+            response = requests.get(url, params=params, timeout=10)
+            data = response.json()
+        
+            df = pd.DataFrame(data, columns=['Start', 'Open', 'High', 'Low', 'Close', 'Volume', 'End', 
+                                           'Quote_Volume', 'Trades', 'Buy_Volume', 'Buy_Quote_Volume', 'Ignore'])
+            df['Start'] = pd.to_datetime(df['Start'], unit='ms')
+            df['Close'] = df['Close'].astype(float)
+            return df[['Start', 'Open', 'High', 'Low', 'Close', 'Volume']]
+        except Exception as e:
+            logger.warning(f"Binance fetch failed: {e}")
+            return pd.DataFrame()
+
+    def load_historical_data(start_date, end_date):
+        """Try multiple sources for historical data"""
+        # Try Yahoo first
+        df = load_yahoo_data(start_date, end_date)
+        if not df.empty:
+            return df
+
+        # Try CryptoCompare
+        df = load_cryptocompare_data(start_date, end_date)
+        if not df.empty:
+            return df
+        
+        # Try Binance
+        df = load_binance_data(start_date, end_date)
+        if not df.empty:
+            return df
+    
+        # All sources failed
+        logger.error("Failed to fetch historical data from all sources")
+        return pd.DataFrame()
+
+
     def combine_data(local_data, yahoo_data):
         """
         Combines local CSV data with new Yahoo Finance data.
@@ -485,15 +562,11 @@ def main():
     fetcher = BTCDataFetcher()
     current_price, current_time, last_close, last_close_time = fetcher.get_btc_data()
 
-    # Display current and last close price with formatting
-    BOLD = "\033[1m"
-    GREEN = "\033[32m"
-    RESET = "\033[0m"
-
+    # Display current and last close price with formatting using logger
     if current_price:
-        print(f"Bitcoin's current price ({current_time}): {BOLD}{GREEN}${current_price:,.2f}{RESET}")
+        logger.info(f"Bitcoin's current price ({current_time}): {BOLD}{GREEN}${current_price:,.2f}{RESET}")
     if last_close:
-        print(f"Bitcoin's last daily close price ({last_close_time}): {BOLD}{GREEN}${last_close:,.2f}{RESET}")
+        logger.info(f"Bitcoin's last daily close price ({last_close_time}): {BOLD}{GREEN}${last_close:,.2f}{RESET}")
 
     # Save current price info to a JSON file
     info = {
@@ -517,15 +590,21 @@ def main():
     if not local_data.empty:
         latest_csv_date = local_data['Start'].max()
         logger.info(f"Local CSV file has data up to {latest_csv_date.date()}.")
-        yahoo_data = pd.DataFrame()
+        recent_historical_data = pd.DataFrame()
 
-        start_date_for_yahoo = latest_csv_date + pd.Timedelta(days=1)
-        if start_date_for_yahoo < today:
-            logger.info(f"Attempting to fetch Yahoo Finance data from {start_date_for_yahoo.date()} to {today.date()}...")
-            yahoo_data = load_yahoo_data(start_date_for_yahoo.strftime('%Y-%m-%d'), today.strftime('%Y-%m-%d'))
+        start_date_for_historical = latest_csv_date + pd.Timedelta(days=1)
+        if start_date_for_historical < today:
+            logger.info(f"Attempting to fetch historical data from {start_date_for_historical.date()} to {today.date()}...")
+            # Try multiple sources
+            historical_data = load_historical_data(start_date_for_historical.strftime('%Y-%m-%d'), today.strftime('%Y-%m-%d'))
+            if not historical_data.empty:
+                recent_historical_data = historical_data  # Use whichever source succeeded
+            else:
+                logger.error("Failed to fetch historical data from all sources")
+                recent_historical_data = pd.DataFrame()
 
-        if not yahoo_data.empty:
-            combined_data = combine_data(local_data, yahoo_data)
+        if not recent_historical_data.empty:
+            combined_data = combine_data(local_data, recent_historical_data)
 
             original_cols = local_data.columns.tolist()
 
