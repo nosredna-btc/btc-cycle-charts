@@ -291,6 +291,29 @@
     <!-- Container for additional textual content -->
     <div id="pageText"></div>
 
+    <!--
+        **Global Error Handlers**
+        These handlers capture all uncaught errors and unhandled promise rejections
+        to aid in debugging and provide stack traces.
+    -->
+    <script>
+        // Catch synchronous errors
+        window.addEventListener('error', function(event) {
+            console.error('Global Error Caught:', event.error ? event.error.stack : event.message);
+            // Optionally, send the error to a logging service
+        });
+
+        // Catch unhandled promise rejections
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('Unhandled Promise Rejection:', event.reason ? event.reason.stack : event.reason);
+            // Optionally, send the error to a logging service
+        });
+    </script>
+
+    <!--
+        **Main JavaScript Code**
+        Handles fetching data, rendering charts, managing modals, and polling for updates.
+    -->
     <script>
         const POLLING_INTERVAL = 10 * 60 * 1000; // 10 minutes
         let isPollingActive = false;
@@ -531,6 +554,7 @@
                 parseText(text);
             } catch (error) {
                 pageTextContainer.innerHTML = '<p>Unable to load additional information at this time.</p>';
+                console.error('[fetchAndParseText] Error fetching or parsing text:', error);
             }
         }
 
@@ -590,6 +614,20 @@
                         img.style.margin = '0';
                     }
                 });
+
+                // Add error handler to retry loading the image once
+                img.addEventListener('error', () => {
+                    if (!img.dataset.hasTriedReload) {
+                        console.warn(`Image failed to load: ${img.src}. Retrying...`);
+                        img.dataset.hasTriedReload = 'true';
+                        img.src = img.src.split('?')[0] + `?retry=${Date.now()}`;
+                    } else {
+                        console.error(`Image failed to load after retry: ${img.src}`);
+                        // Optionally, set a placeholder image or notify the user
+                        img.alt = 'Image failed to load.';
+                        img.style.display = 'none'; // Hide the image element
+                    }
+                });
             });
         }
 
@@ -608,24 +646,58 @@
 
         /**
          * Preloads all chart images to improve performance.
+         * Implements retry logic for failed image loads.
          */
         async function preloadImages() {
             const timestamp = new Date().toISOString();
             const promises = Object.entries(chartData).map(([id, chart]) => {
-                return new Promise(resolve => {
-                    const img = new Image();
-                    img.src = `${chart.path}?v=${timestamp}`;
-                    img.onload = () => resolve();
-                    img.onerror = () => resolve();
-                }).then(() => {
-                    loadedImages[id] = `${chart.path}?v=${timestamp}`;
-                });
+                return loadImageWithRetry(chart.path, id, 1, timestamp);
             });
             await Promise.all(promises);
         }
 
         /**
+         * Loads an image with retry logic.
+         * @param {string} path - The image path.
+         * @param {string} id - The chart ID.
+         * @param {number} retries - Number of retries left.
+         * @param {string} timestamp - Timestamp for cache busting.
+         */
+        function loadImageWithRetry(path, id, retries, timestamp) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.src = `${path}?v=${timestamp}`;
+                img.onload = () => {
+                    loadedImages[id] = img.src;
+                    resolve();
+                };
+                img.onerror = () => {
+                    if (retries > 0) {
+                        console.warn(`Failed to load ${path}. Retrying... (${retries} retries left)`);
+                        // Retry loading the image by resetting the src with a new query parameter
+                        img.src = `${path}?v=${Date.now()}`;
+                        img.onload = () => {
+                            loadedImages[id] = img.src;
+                            resolve();
+                        };
+                        img.onerror = () => {
+                            console.error(`Failed to load ${path} after retry.`);
+                            // Optionally, set a placeholder or skip
+                            loadedImages[id] = ''; // Or a placeholder path
+                            resolve();
+                        };
+                    } else {
+                        console.error(`Failed to load ${path} after all retries.`);
+                        loadedImages[id] = ''; // Or a placeholder path
+                        resolve();
+                    }
+                };
+            });
+        }
+
+        /**
          * Renders the specified page with its charts and content.
+         * Adds retry logic to images in the DOM.
          * @param {number} pageNumber - The page number to render.
          */
         function renderPage(pageNumber) {
@@ -640,7 +712,7 @@
                         return `
                             <div class="chart-item" data-chart-id="${chartId}">
                                 <div class="chart-wrapper">
-                                    <img src="${loadedImages[chartId] || ''}" alt="${chart.alt}">
+                                    <img src="${loadedImages[chartId] || ''}" alt="${chart.alt}" data-retries="1">
                                 </div>
                                 <div class="caption-wrapper">
                                     <div class="caption">
@@ -668,6 +740,24 @@
                 });
             });
 
+            // Handle image error events with retry logic
+            const images = container.querySelectorAll('img');
+            images.forEach(img => {
+                img.addEventListener('error', () => {
+                    let retries = parseInt(img.dataset.retries) || 0;
+                    if (retries > 0) {
+                        console.warn(`Failed to load image: ${img.src}. Retrying...`);
+                        img.dataset.retries = retries - 1;
+                        img.src = img.src.split('?')[0] + `?retry=${Date.now()}`;
+                    } else {
+                        console.error(`Failed to load image after retry: ${img.src}`);
+                        // Optionally, set a placeholder image or notify the user
+                        img.alt = 'Image failed to load.';
+                        img.style.display = 'none'; // Hide the image element
+                    }
+                });
+            });
+
             // Display corresponding page text
             displayPageText(pageNumber);
         }
@@ -677,17 +767,41 @@
          * @param {number} index - The index of the chart to display.
          */
         function openModal(index) {
-            const currentCharts = pageConfigs[currentPage].charts;
-            if (index >= 0 && index < currentCharts.length) {
-                currentModalIndex = index;
-                const chartId = currentCharts[currentModalIndex];
-                modalImg.src = loadedImages[chartId];
-                modal.style.display = 'block';
-                modal.setAttribute('aria-hidden', 'false');
-                document.body.style.overflow = 'hidden';
-                console.log('[openModal] Modal opened.');
+            try {
+                const currentCharts = pageConfigs[currentPage].charts;
+                if (index >= 0 && index < currentCharts.length) {
+                    currentModalIndex = index;
+                    const chartId = currentCharts[currentModalIndex];
+                    modalImg.src = loadedImages[chartId];
+                    modal.style.display = 'block';
+                    modal.setAttribute('aria-hidden', 'false');
+                    document.body.style.overflow = 'hidden';
+                    console.log('[openModal] Modal opened.');
+
+                    // Attach error handler with retry logic
+                    modalImg.addEventListener('error', handleModalImageError);
+                } else {
+                    console.warn(`[openModal] Invalid chart index: ${index}.`);
+                }
+            } catch (error) {
+                console.error('[openModal] Error:', error);
+            }
+        }
+
+        /**
+         * Handles image load errors in the modal with retry logic.
+         */
+        function handleModalImageError(event) {
+            const img = event.target;
+            if (!img.dataset.hasTriedReload) {
+                console.warn(`Modal image failed to load: ${img.src}. Retrying...`);
+                img.dataset.hasTriedReload = 'true';
+                img.src = img.src.split('?')[0] + `?retry=${Date.now()}`;
             } else {
-                console.warn(`[openModal] Invalid chart index: ${index}.`);
+                console.error(`Modal image failed to load after retry: ${img.src}`);
+                img.alt = 'Image failed to load.';
+                img.style.display = 'none'; // Hide the image element
+                // Optionally, close the modal or notify the user
             }
         }
 
@@ -695,11 +809,18 @@
          * Closes the chart modal.
          */
         function closeModal() {
-            modal.style.display = 'none';
-            modal.setAttribute('aria-hidden', 'true');
-            currentModalIndex = -1;
-            document.body.style.overflow = '';
-            console.log('[closeModal] Modal closed.');
+            try {
+                modal.style.display = 'none';
+                modal.setAttribute('aria-hidden', 'true');
+                currentModalIndex = -1;
+                document.body.style.overflow = '';
+                console.log('[closeModal] Modal closed.');
+
+                // Remove error handler to prevent multiple bindings
+                modalImg.removeEventListener('error', handleModalImageError);
+            } catch (error) {
+                console.error('[closeModal] Error:', error);
+            }
         }
 
         // Event listener to close modal when clicked outside the image
@@ -846,27 +967,35 @@
          * @param {string} trigger - The source triggering the refresh.
          */
         async function refreshPage(trigger = 'Unknown') {
-            await fetchChartInfoIfNeeded(trigger);
-            await preloadImages();
-            renderPage(currentPage);
-            startEnhancedPolling();
+            try {
+                await fetchChartInfoIfNeeded(trigger);
+                await preloadImages();
+                renderPage(currentPage);
+                startEnhancedPolling();
+            } catch (error) {
+                console.error('[refreshPage] Error refreshing page:', error);
+            }
         }
 
         // Initialize the application once the DOM is fully loaded
         window.addEventListener('DOMContentLoaded', () => {
-            initializePolling();
+            try {
+                initializePolling();
 
-            (async () => {
-                try {
-                    await fetchChartInfoIfNeeded('DOMContentLoaded');
-                    await fetchAndParseText();
-                    await preloadImages();
-                    renderPage(currentPage);
-                    startEnhancedPolling();
-                } catch (error) {
-                    console.error('[initialize] Initialization error:', error);
-                }
-            })();
+                (async () => {
+                    try {
+                        await fetchChartInfoIfNeeded('DOMContentLoaded');
+                        await fetchAndParseText();
+                        await preloadImages();
+                        renderPage(currentPage);
+                        startEnhancedPolling();
+                    } catch (error) {
+                        console.error('[initialize] Initialization error:', error);
+                    }
+                })();
+            } catch (error) {
+                console.error('[DOMContentLoaded] Error during initialization:', error);
+            }
         });
     </script>
 
