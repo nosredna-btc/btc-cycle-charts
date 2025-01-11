@@ -18,12 +18,16 @@ You can see the same information in this chart which color codes the years.
 ![Cycles chart](assets/cycle.png)
 
 ## Using This Site
+### Notes
+- Note that the charts follows the common convention of tracking closing prices in [UTC time](https://www.timeanddate.com/worldclock/timezone/utc). That's what you'll see on the charts. For your convenience, the time at the top of each page is your local time.
 - This site was not intended for mobile devices. It's only been tested on computers.
-- Navigate between the pages with the green buttons
-- Click on a chart to see an enlarged version, click again to shrink it.
 - Please use but don’t abuse this site. Refreshing over and over won’t do anything except use up bandwidth.
 - **The current price is not updated in real time.** You should expect that the price can be up to a few hours old, due to the way GitHub Actions work.
 - When there is new price data available, you’ll see a REFRESH button. Go ahead and click on it to get newer data.
+### Interface
+- Navigate between the pages with the green buttons
+- Click on a chart to see an enlarged version, click again to shrink it.
+- You can quickly switch between all the charts on a page with the left arrow ← and right arrow → keys.
 
 ## Not Investment Advice
 This site should not be considered investment advice
@@ -49,7 +53,6 @@ This "Bitcoin Support" chart is a "log/linear" chart, meaning the left labels ar
 Why does the price droop? It's because the gains in bitcoins early history were much larger. Bitcoin's gains are slowing down, but slowly. This chart shows what we can expect from bitcoin over time, if the power law holds up.
 
 ![Falloff chart](assets/falloff.png)
-
 
 ## About This Model
 
