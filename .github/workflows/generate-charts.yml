@@ -2,7 +2,7 @@ name: Generate Charts
 
 on:
   schedule:
-    - cron: "*/23 * * * *"  # Runs every 14 minutes
+    - cron: "*/23 * * * *"  # Runs every 23 minutes
   workflow_dispatch:        # Allows manual runs from the Actions tab
 
 jobs:
@@ -30,20 +30,16 @@ jobs:
         run: |
           python allcharts.py
 
-      - name: Move final charts
-        run: |
-          mkdir -p charts
-          mv charts_dev/* charts
-
-      - name: Log workflow completion time
-        run: echo "Workflow completed at $(date)"
-
-      - name: Commit and push changes
+      - name: Deploy to GitHub Pages
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add charts/*.png charts/*.json bitcoin.csv
-          git diff-index --quiet HEAD || git commit -m "Auto-update charts (moved from charts_dev)"
-          git push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          git checkout --orphan gh-pages
+          git reset --hard
+          cp -r charts/* .
+          git add .
+          git commit -m "Update charts on GitHub Pages"
+          git push --force origin gh-pages
+
+      - name: Log workflow completion time
+        run: echo "Workflow completed at $(date)"
