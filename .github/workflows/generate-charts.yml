@@ -49,13 +49,17 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          mkdir -p temp_charts
+          mv charts/* temp_charts/ || echo "No files to move"
           git checkout --orphan gh-pages
           git reset --hard
           mkdir -p charts
-          mv charts/* .
+          mv temp_charts/* charts/ || echo "No files to move"
+          rm -rf temp_charts
           git add .
           git commit -m "Update charts on GitHub Pages"
           git push --force origin gh-pages
+
 
       - name: Log workflow completion time
         run: echo "Workflow completed at $(date)"
