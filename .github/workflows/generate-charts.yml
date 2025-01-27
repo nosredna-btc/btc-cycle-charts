@@ -50,7 +50,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           mkdir -p temp_deploy
-          cp -r * temp_deploy/  # Copy everything to a temporary directory
+          shopt -s extglob  # Enable advanced globbing
+          cp -r !(temp_deploy) temp_deploy/  # Exclude temp_deploy during copy
           git checkout --orphan gh-pages
           git reset --hard
           mv temp_deploy/* .  # Move everything back to the root
@@ -58,6 +59,7 @@ jobs:
           git add .
           git commit -m "Update GitHub Pages with full directory structure"
           git push --force origin gh-pages
+
 
       - name: Log workflow completion time
         run: echo "Workflow completed at $(date)"
