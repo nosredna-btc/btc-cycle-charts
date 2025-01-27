@@ -30,15 +30,34 @@ jobs:
         run: |
           python allcharts.py
 
+      - name: Debug charts_dev directory before moving
+        run: |
+          echo "Contents of charts_dev before moving:"
+          ls -l charts_dev || echo "charts_dev directory does not exist"
+
+      - name: Move final charts
+        run: |
+          mkdir -p charts
+          mv charts_dev/* charts || echo "No files to move"
+
+      - name: Debug charts directory after moving
+        run: |
+          echo "Contents of charts after moving:"
+          ls -l charts || echo "charts directory is empty"
+
       - name: Deploy to GitHub Pages
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          mkdir -p temp_deploy
+          shopt -s extglob  # Enable advanced globbing
+          cp -r !(temp_deploy|.git|.github) temp_deploy/  # Exclude unnecessary directories
           git checkout --orphan gh-pages
           git reset --hard
-          cp -r charts/* .
+          mv temp_deploy/* .  # Move everything back to the root
+          rm -rf temp_deploy
           git add .
-          git commit -m "Update charts on GitHub Pages"
+          git commit -m "Update GitHub Pages with optimized deployment"
           git push --force origin gh-pages
 
       - name: Log workflow completion time
