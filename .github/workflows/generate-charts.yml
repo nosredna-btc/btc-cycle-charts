@@ -2,7 +2,7 @@ name: Generate Charts
 
 on:
   schedule:
-    - cron: "*/23 * * * *"  # Runs every 23 minutes
+    - cron: "*/2300 * * * *"  # Runs every 23 minutes
   workflow_dispatch:        # Allows manual runs from the Actions tab
 
 jobs:
@@ -29,6 +29,21 @@ jobs:
       - name: Generate charts
         run: |
           python allcharts.py
+
+      - name: Debug charts_dev directory before moving
+        run: |
+          echo "Contents of charts_dev before moving:"
+          ls -l charts_dev || echo "charts_dev directory does not exist"
+
+      - name: Move final charts
+        run: |
+          mkdir -p charts
+          mv charts_dev/* charts || echo "No files to move"
+
+      - name: Debug charts directory after moving
+        run: |
+          echo "Contents of charts after moving:"
+          ls -l charts || echo "charts directory is empty"
 
       - name: Deploy to GitHub Pages
         run: |
