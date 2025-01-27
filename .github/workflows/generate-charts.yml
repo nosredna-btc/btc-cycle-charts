@@ -49,17 +49,15 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          mkdir -p temp_charts
-          mv charts/* temp_charts/ || echo "No files to move"
+          mkdir -p temp_deploy
+          cp -r * temp_deploy/  # Copy everything to a temporary directory
           git checkout --orphan gh-pages
           git reset --hard
-          mkdir -p charts
-          mv temp_charts/* charts/ || echo "No files to move"
-          rm -rf temp_charts
+          mv temp_deploy/* .  # Move everything back to the root
+          rm -rf temp_deploy
           git add .
-          git commit -m "Update charts on GitHub Pages"
+          git commit -m "Update GitHub Pages with full directory structure"
           git push --force origin gh-pages
-
 
       - name: Log workflow completion time
         run: echo "Workflow completed at $(date)"
