@@ -2,7 +2,7 @@ name: Generate Charts
 
 on:
   schedule:
-    - cron: "*/2300 * * * *"  # Runs every 23 minutes
+    - cron: "*/23 * * * *"  # Runs every 23 minutes
   workflow_dispatch:        # Allows manual runs from the Actions tab
 
 jobs:
