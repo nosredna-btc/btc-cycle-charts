@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Bitcoin 4 Year Cycle Charts</title>
+    <link rel="icon" href="assets/bitcoin.ico" type="image/x-icon">
+    <script src="assets/marked.min.js"></script>
+    <style>
+        /* CSS Variables for consistent styling */
+        :root {
+            --body-bg: #f0f0f0;
+            --text-color: #333;
+            --subtext-color: #555;
+            --font-family: Arial, sans-serif;
+            --chart-bg: #fff;
+            --border-color: #ddd;
+            --box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            --hover-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            --transition-speed: 0.3s;
+            --chart-width: 400px;
+            --chart-height: 290px;
+            --single-chart-width: 800px;
+            --single-chart-height: 600px;
+            --caption-font-size: 14px;
+            --single-caption-font-size: 18px;
+            --nav-button-bg: #4CAF50;
+            --nav-button-hover-bg: #45a049;
+            --nav-button-active-bg: #357a38;
+            --refresh-button-color: #4CAF50;
+            --refresh-button-hover-color: #45a049;
+            --page-text-color: #444;
+            --page-text-bg: #fafafa;
+            --page-text-padding: 20px;
+            --page-text-border-radius: 8px;
+            --page-text-box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            --page-text-margin-top: 20px;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--body-bg);
+            margin: 20px;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            text-align: center;
+            color: var(--text-color);
+        }
+
+        #pageText h1,
+        #pageText h2,
+        #pageText h3,
+        #pageText h4,
+        #pageText h5,
+        #pageText h6 {
+            text-align: left;
+            color: var(--text-color);
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .nav-button {
+            padding: 8px 16px;
+            background-color: var(--nav-button-bg);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color var(--transition-speed);
+        }
+
+        .nav-button:hover {
+            background-color: var(--nav-button-hover-bg);
+        }
+
+        .nav-button.active {
+            background-color: var(--nav-button-active-bg);
+        }
+
+        .nav-button:hover,
+        .chart-item:hover,
+        #refreshButton:hover {
+            cursor: pointer;
+        }
+
+        .charts-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .chart-item {
+            background-color: var(--chart-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: var(--box-shadow);
+            width: var(--chart-width);
+            height: var(--chart-height);
+            transition: box-shadow var(--transition-speed);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .charts-grid.single-chart .chart-item {
+            width: var(--single-chart-width);
+            height: var(--single-chart-height);
+            margin: 0 auto;
+            max-width: none;
+        }
+
+        .charts-grid.single-chart .chart-wrapper {
+            flex: 0 0 500px;
+        }
+
+        .charts-grid.single-chart .caption {
+            font-size: var(--single-caption-font-size);
+        }
+
+        .chart-wrapper {
+            flex: 0 0 240px;
+            background-color: var(--chart-bg);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chart-wrapper img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 4px;
+            transition: transform 0.2s ease;
+        }
+
+        .caption-wrapper {
+            flex: 0 0 30px;
+            display: flex;
+            align-items: center;
+        }
+
+        .caption {
+            width: 100%;
+            text-align: center;
+            font-size: var(--caption-font-size);
+            color: var(--subtext-color);
+        }
+
+        .chart-item:hover {
+            box-shadow: var(--hover-shadow);
+        }
+
+        .chart-item:hover img {
+            transform: scale(1.02);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.9);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+            cursor: pointer;
+        }
+
+        .modal-content {
+            margin: auto;
+            display: block;
+            max-width: 90%;
+            max-height: 90vh;
+            position: relative;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: default;
+        }
+
+        @media (max-width: 768px) {
+            .charts-grid:not(.single-chart) .chart-item,
+            .charts-grid:not(.single-chart) .chart-wrapper {
+                width: 100%;
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.1);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        #refreshButton {
+            animation: pulse 2s infinite;
+            transition: transform 0.2s ease, opacity 0.2s ease, color 0.3s ease;
+            color: var(--refresh-button-color);
+            background: none;
+            border: none;
+            cursor: pointer;
+            margin-left: 8px;
+            font-size: 12px;
+            padding: 0;
+        }
+
+        #refreshButton:hover {
+            color: var(--refresh-button-hover-color);
+        }
+
+        #pageText {
+            background-color: var(--page-text-bg);
+            color: var(--page-text-color);
+            padding: var(--page-text-padding);
+            border-radius: var(--page-text-border-radius);
+            box-shadow: var(--page-text-box-shadow);
+            margin-top: var(--page-text-margin-top);
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.6;
+        }
+
+        #pageText img {
+            max-width: 75%;
+            height: auto;
+        }
+
+        #pageText h2, #pageText h3, #pageText h4 {
+            color: var(--text-color);
+        }
+
+        #pageText ul {
+            list-style-type: disc;
+            padding-left: 20px;
+        }
+
+        #pageText a {
+            color: var(--nav-button-bg);
+            text-decoration: none;
+        }
+
+        #pageText a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <!-- Modal for displaying enlarged charts -->
+    <div id="imageModal" class="modal" aria-hidden="true" role="dialog">
+        <img class="modal-content" id="modalImage" alt="Enlarged Chart">
+    </div>
+
+    <h1>Bitcoin 4 Year Cycle Charts</h1>
+
+    <!-- Display current price and last update time -->
+    <div id="updateTime" style="text-align: center; margin-bottom: 20px; font-size: 16px; color: var(--subtext-color);">
+        <!-- Content populated by JavaScript -->
+    </div>
+
+    <!-- Navigation buttons for different chart categories -->
+    <div class="navigation">
+        <button class="nav-button" data-page="1">Featured Chart</button>
+        <button class="nav-button" data-page="2">Power Law Charts</button>
+        <button class="nav-button" data-page="3">Quantiles Charts</button>
+        <button class="nav-button" data-page="4">Days Ahead Charts</button>
+        <button class="nav-button" data-page="5">All Charts</button>
+    </div>
+
+    <!-- Container to hold chart items -->
+    <div id="chartContainer"></div>
+
+    <!-- Container for additional textual content -->
+    <div id="pageText"></div>
+
+    <!--
+        **Global Error Handlers**
+        These handlers capture all uncaught errors and unhandled promise rejections
+        to aid in debugging and provide stack traces.
+    -->
+    <script>
+        // Catch synchronous errors
+        window.addEventListener('error', function(event) {
+            console.error('Global Error Caught:', event.error ? event.error.stack : event.message);
+            // Optionally, send the error to a logging service
+        });
+
+        // Catch unhandled promise rejections
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('Unhandled Promise Rejection:', event.reason ? event.reason.stack : event.reason);
+            // Optionally, send the error to a logging service
+        });
+    </script>
+
+    <!--
+        **Main JavaScript Code**
+        Handles fetching data, rendering charts, managing modals, and polling for updates.
+    -->
+    <script>
+        const POLLING_INTERVAL = 10 * 60 * 1000; // 10 minutes
+        let isPollingActive = false;
+        let currentPage = 1;
+        let currentModalIndex = -1;
+        let previousTimestamp = null;
+
+        let hasFetched = false; // Prevents multiple simultaneous fetches
+
+        const pageConfigs = {
+            1: { title: "Featured Chart", charts: ['powerlaw_chart1'] },
+            2: { title: "Power Law Charts", charts: ['powerlaw_chart1', 'powerlaw_chart2', 'powerlaw_chart3'] },
+            3: { title: "Quantiles Charts", charts: ['quantiles_chart1', 'quantiles_chart2', 'quantiles_chart3'] },
+            4: { title: "Days Ahead Charts", charts: ['ghostly_days_chart1', 'ghostly_days_chart2', 'ghostly_days_chart3'] },
+            5: {
+                title: "All Charts",
+                charts: [
+                    'powerlaw_chart1', 'powerlaw_chart2', 'powerlaw_chart3',
+                    'quantiles_chart1', 'quantiles_chart2', 'quantiles_chart3',
+                    'ghostly_days_chart1', 'ghostly_days_chart2', 'ghostly_days_chart3'
+                ]
+            }
+        };
+
+        const chartData = {
+            powerlaw_chart1: {
+                alt: "Power Law / 4 year view",
+                caption: "Power Law / 4 year view",
+                date: "1 Jan 2024 through 31 Dec 2027",
+                path: 'charts/bitcoin_cycles_2024_2027.png'
+            },
+            powerlaw_chart2: {
+                alt: "Power Law / 2 year view",
+                caption: "Power Law / 2 year view",
+                date: "1 Jan 2024 through 31 Dec 2025",
+                path: 'charts/bitcoin_cycles_2024_2025.png'
+            },
+            powerlaw_chart3: {
+                alt: "Power Law / 1 year view",
+                caption: "Power Law / 1 year view",
+                date: `1 Jan ${new Date().getFullYear()} through 31 Dec ${new Date().getFullYear()}`,
+                path: `charts/bitcoin_cycles_${new Date().getFullYear()}_powerlaw.png`
+            },
+            quantiles_chart1: {
+                alt: "Quantiles / 4 year view",
+                caption: "Quantiles / 4 year view",
+                date: "1 Jan 2024 through 31 Dec 2027",
+                path: 'charts/bitcoin_cycles_quantiles_2024_2027.png'
+            },
+            quantiles_chart2: {
+                alt: "Quantiles / 2 year view",
+                caption: "Quantiles / 2 year view",
+                date: "1 Jan 2024 through 31 Dec 2025",
+                path: 'charts/bitcoin_cycles_quantiles_2024_2025.png'
+            },
+            quantiles_chart3: {
+                alt: "Quantiles / 1 year view",
+                caption: "Quantiles / 1 year view",
+                date: `1 Jan ${new Date().getFullYear()} through 31 Dec ${new Date().getFullYear()}`,
+                path: `charts/bitcoin_cycles_${new Date().getFullYear()}_quantiles.png`
+            },
+            ghostly_days_chart1: {
+                alt: 'Days Ahead / 4 year view',
+                caption: 'Days Ahead / 4 year view',
+                date: "1 Jan 2024 through 31 Dec 2027",
+                path: 'charts/bitcoin_cycles_days_ahead_2024_2027.png'
+            },
+            ghostly_days_chart2: {
+                alt: 'Days Ahead / 2 year view',
+                caption: 'Days Ahead / 2 year view',
+                date: "1 Jan 2024 through 31 Dec 2025",
+                path: 'charts/bitcoin_cycles_days_ahead_2024_2025.png'
+            },
+            ghostly_days_chart3: {
+                alt: 'Days Ahead / 1 year view',
+                caption: 'Days Ahead / 1 year view',
+                date: `1 Jan ${new Date().getFullYear()} through 31 Dec ${new Date().getFullYear()}`,
+                path: `charts/bitcoin_cycles_${new Date().getFullYear()}_ghostly_days.png`
+            }
+        };
+
+        const loadedImages = {};
+        let pageTexts = {};
+
+        const modal = document.getElementById('imageModal');
+        const modalImg = document.getElementById('modalImage');
+        const container = document.getElementById('chartContainer');
+        const pageTextContainer = document.getElementById('pageText');
+
+        /**
+         * Fetches chart information if not already fetched.
+         * @param {string} trigger - The source triggering the fetch.
+         */
+        async function fetchChartInfoIfNeeded(trigger = 'Unknown') {
+            console.log(`[fetchChartInfoIfNeeded] Triggered by: ${trigger}`);
+
+            if (hasFetched) {
+                console.warn('[fetchChartInfoIfNeeded] Fetch request ignored to prevent spamming.');
+                return;
+            }
+
+            hasFetched = true;
+
+            try {
+                const fetchUrl = `charts/chart_info.json?v=${Date.now()}`;
+                const response = await fetch(fetchUrl);
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const data = await response.json();
+                console.log('[fetchChartInfoIfNeeded] Fetch successful.');
+
+                await handleChartInfo(data, trigger);
+                return data;
+            } catch (error) {
+                console.error('[fetchChartInfoIfNeeded] Error fetching chart info:', error);
+            } finally {
+                hasFetched = false;
+            }
+        }
+
+        /**
+         * Processes the fetched chart information.
+         * @param {Object} data - The fetched data.
+         * @param {string} trigger - The source triggering the handler.
+         */
+        async function handleChartInfo(data, trigger) {
+            const gmtTimestamp = data.timestamp_gmt;
+            const price = parseFloat(data.current_price).toFixed(2);
+
+            if (!previousTimestamp) {
+                if (gmtTimestamp) {
+                    const dateObj = new Date(gmtTimestamp);
+                    if (!isNaN(dateObj)) {
+                        document.getElementById('updateTime').innerHTML = getUpdateTimeHTML(dateObj, price);
+                        previousTimestamp = gmtTimestamp;
+                    }
+                }
+            } else if (gmtTimestamp && gmtTimestamp !== previousTimestamp) {
+                previousTimestamp = gmtTimestamp;
+                const updateTimeElement = document.getElementById('updateTime');
+
+                if (!updateTimeElement.querySelector('#refreshButton')) {
+                    const refreshButton = createRefreshButton();
+                    
+                    refreshButton.addEventListener('click', async () => {
+                        console.log('[handleChartInfo] Refresh button clicked.');
+                        refreshButton.disabled = true;
+                        refreshButton.innerText = 'Refreshing...';
+
+                        try {
+                            const latestData = await fetchChartInfoIfNeeded('RefreshButton');
+
+                            if (latestData && latestData.timestamp_gmt) {
+                                const latestDateObj = new Date(latestData.timestamp_gmt);
+                                const latestPrice = parseFloat(latestData.current_price).toFixed(2);
+                                if (!isNaN(latestDateObj)) {
+                                    document.getElementById('updateTime').innerHTML = getUpdateTimeHTML(latestDateObj, latestPrice);
+                                    previousTimestamp = latestData.timestamp_gmt;
+                                    
+                                    await preloadImages();
+                                    renderPage(currentPage);
+                                }
+                            }
+
+                            refreshButton.remove();
+                            console.log('[handleChartInfo] Refresh button removed after refreshing.');
+                            startEnhancedPolling();
+                        } catch (error) {
+                            console.error('[handleChartInfo] Error during refresh:', error);
+                            refreshButton.disabled = false;
+                            refreshButton.innerText = 'REFRESH';
+                            alert('Failed to refresh. Please try again.');
+                        }
+                    });
+
+                    updateTimeElement.appendChild(refreshButton);
+                    console.log('[handleChartInfo] Refresh button appended to updateTime element.');
+                    stopEnhancedPolling();
+                    console.log('[handleChartInfo] Polling stopped after new data detected.');
+                }
+            }
+        }
+
+        /**
+         * Creates the refresh button element.
+         * @returns {HTMLElement} - The refresh button.
+         */
+        function createRefreshButton() {
+            const refreshButton = document.createElement('button');
+            refreshButton.id = 'refreshButton';
+            refreshButton.innerText = 'REFRESH';
+            return refreshButton;
+        }
+
+        /**
+         * Formats a Date object into a readable string.
+         * @param {Date} dateObj - The date to format.
+         * @returns {string} - The formatted date string.
+         */
+        function formatDateTime(dateObj) {
+            return dateObj.toLocaleString('en-GB', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+            }).replace(',', '');
+        }
+
+        /**
+         * Generates HTML for the update time section.
+         * @param {Date} dateObj - The date of the update.
+         * @param {string} price - The current price.
+         * @returns {string} - The HTML string.
+         */
+        function getUpdateTimeHTML(dateObj, price) {
+            return `
+                Bitcoin price is <strong>$${price}</strong>
+                as of <strong>${formatDateTime(dateObj)}</strong>
+            `;
+        }
+
+        /**
+         * Fetches and parses additional textual content.
+         */
+        async function fetchAndParseText() {
+            try {
+                const cacheBuster = `v=${Date.now()}`;
+                const response = await fetch(`text.txt?${cacheBuster}`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch text.txt');
+                }
+                const text = await response.text();
+                parseText(text);
+            } catch (error) {
+                pageTextContainer.innerHTML = '<p>Unable to load additional information at this time.</p>';
+                console.error('[fetchAndParseText] Error fetching or parsing text:', error);
+            }
+        }
+
+        /**
+         * Parses the fetched text content and organizes it by page.
+         * @param {string} text - The raw text content.
+         */
+        function parseText(text) {
+            const pageHeaderRegex = /^Page\s+(\d+)\s+[—\-–]\s+(.+)$/i;
+            const lines = text.split(/\r?\n/);
+            let currentPageNumber = null;
+            let currentPageContent = [];
+            pageTexts = {};
+
+            marked.setOptions({
+                breaks: true,
+                gfm: true,
+                headerIds: false,
+                mangle: false,
+                sanitize: false
+            });
+
+            lines.forEach((line) => {
+                const headerMatch = line.match(pageHeaderRegex);
+                if (headerMatch) {
+                    if (currentPageNumber !== null) {
+                        pageTexts[currentPageNumber] = marked.parse(currentPageContent.join('\n').trim());
+                    }
+                    currentPageNumber = parseInt(headerMatch[1]);
+                    currentPageContent = [];
+                } else {
+                    if (currentPageNumber !== null) {
+                        currentPageContent.push(line);
+                    }
+                }
+            });
+
+            if (currentPageNumber !== null && currentPageContent.length > 0) {
+                pageTexts[currentPageNumber] = marked.parse(currentPageContent.join('\n').trim());
+            }
+        }
+
+        /**
+         * Adjusts images within the page text for responsiveness.
+         */
+        function handleImagesInPageText() {
+            const container = document.getElementById('pageText');
+            const images = container.querySelectorAll('img');
+            images.forEach(img => {
+                img.addEventListener('load', () => {
+                    const containerWidth = container.clientWidth;
+                    if (img.naturalWidth > containerWidth) {
+                        img.style.display = 'block';
+                        img.style.margin = '0 auto';
+                    } else {
+                        img.style.display = 'inline-block';
+                        img.style.margin = '0';
+                    }
+                });
+
+                // Add error handler to retry loading the image once
+                img.addEventListener('error', () => {
+                    if (!img.dataset.hasTriedReload) {
+                        console.warn(`Image failed to load: ${img.src}. Retrying...`);
+                        img.dataset.hasTriedReload = 'true';
+                        img.src = img.src.split('?')[0] + `?retry=${Date.now()}`;
+                    } else {
+                        console.error(`Image failed to load after retry: ${img.src}`);
+                        // Optionally, set a placeholder image or notify the user
+                        img.alt = 'Image failed to load.';
+                        img.style.display = 'none'; // Hide the image element
+                    }
+                });
+            });
+        }
+
+        /**
+         * Displays the textual content for the specified page.
+         * @param {number} pageNumber - The page number to display.
+         */
+        function displayPageText(pageNumber) {
+            if (pageTexts[pageNumber]) {
+                pageTextContainer.innerHTML = pageTexts[pageNumber];
+            } else {
+                pageTextContainer.innerHTML = '<p>No additional information available for this page.</p>';
+            }
+            handleImagesInPageText();
+        }
+
+        /**
+         * Preloads all chart images to improve performance.
+         * Implements retry logic for failed image loads.
+         */
+        async function preloadImages() {
+            const timestamp = new Date().toISOString();
+            const promises = Object.entries(chartData).map(([id, chart]) => {
+                return loadImageWithRetry(chart.path, id, 1, timestamp);
+            });
+            await Promise.all(promises);
+        }
+
+        /**
+         * Loads an image with retry logic.
+         * @param {string} path - The image path.
+         * @param {string} id - The chart ID.
+         * @param {number} retries - Number of retries left.
+         * @param {string} timestamp - Timestamp for cache busting.
+         */
+        function loadImageWithRetry(path, id, retries, timestamp) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.src = `${path}?v=${timestamp}`;
+                img.onload = () => {
+                    loadedImages[id] = img.src;
+                    resolve();
+                };
+                img.onerror = () => {
+                    if (retries > 0) {
+                        console.warn(`Failed to load ${path}. Retrying... (${retries} retries left)`);
+                        // Retry loading the image by resetting the src with a new query parameter
+                        img.src = `${path}?v=${Date.now()}`;
+                        img.onload = () => {
+                            loadedImages[id] = img.src;
+                            resolve();
+                        };
+                        img.onerror = () => {
+                            console.error(`Failed to load ${path} after retry.`);
+                            // Optionally, set a placeholder or skip
+                            loadedImages[id] = ''; // Or a placeholder path
+                            resolve();
+                        };
+                    } else {
+                        console.error(`Failed to load ${path} after all retries.`);
+                        loadedImages[id] = ''; // Or a placeholder path
+                        resolve();
+                    }
+                };
+            });
+        }
+
+        /**
+         * Renders the specified page with its charts and content.
+         * Adds retry logic to images in the DOM.
+         * @param {number} pageNumber - The page number to render.
+         */
+        function renderPage(pageNumber) {
+            const config = pageConfigs[pageNumber];
+            const isSingleChart = pageNumber === 1;
+
+            container.innerHTML = `
+                <h2>${config.title}</h2>
+                <div class="charts-grid ${isSingleChart ? 'single-chart' : ''}">
+                    ${config.charts.map(chartId => {
+                        const chart = chartData[chartId];
+                        return `
+                            <div class="chart-item" data-chart-id="${chartId}">
+                                <div class="chart-wrapper">
+                                    <img src="${loadedImages[chartId] || ''}" alt="${chart.alt}" data-retries="1">
+                                </div>
+                                <div class="caption-wrapper">
+                                    <div class="caption">
+                                        <strong>${chart.caption}</strong><br>
+                                        ${chart.date}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+
+            // Highlight the active navigation button
+            document.querySelectorAll('.nav-button').forEach(button => {
+                const isActive = parseInt(button.dataset.page) === pageNumber;
+                button.classList.toggle('active', isActive);
+            });
+
+            // Attach click event listeners to chart items
+            document.querySelectorAll('.chart-item').forEach((item, index) => {
+                item.addEventListener('click', () => {
+                    const chartId = item.getAttribute('data-chart-id');
+                    openModal(index);
+                });
+            });
+
+            // Handle image error events with retry logic
+            const images = container.querySelectorAll('img');
+            images.forEach(img => {
+                img.addEventListener('error', () => {
+                    let retries = parseInt(img.dataset.retries) || 0;
+                    if (retries > 0) {
+                        console.warn(`Failed to load image: ${img.src}. Retrying...`);
+                        img.dataset.retries = retries - 1;
+                        img.src = img.src.split('?')[0] + `?retry=${Date.now()}`;
+                    } else {
+                        console.error(`Failed to load image after retry: ${img.src}`);
+                        // Optionally, set a placeholder image or notify the user
+                        img.alt = 'Image failed to load.';
+                        img.style.display = 'none'; // Hide the image element
+                    }
+                });
+            });
+
+            // Display corresponding page text
+            displayPageText(pageNumber);
+        }
+
+        /**
+         * Opens the modal to display an enlarged chart image.
+         * @param {number} index - The index of the chart to display.
+         */
+        function openModal(index) {
+            try {
+                const currentCharts = pageConfigs[currentPage].charts;
+                if (index >= 0 && index < currentCharts.length) {
+                    currentModalIndex = index;
+                    const chartId = currentCharts[currentModalIndex];
+                    modalImg.src = loadedImages[chartId];
+                    modal.style.display = 'block';
+                    modal.setAttribute('aria-hidden', 'false');
+                    document.body.style.overflow = 'hidden';
+                    console.log('[openModal] Modal opened.');
+
+                    // Attach error handler with retry logic
+                    modalImg.addEventListener('error', handleModalImageError);
+                } else {
+                    console.warn(`[openModal] Invalid chart index: ${index}.`);
+                }
+            } catch (error) {
+                console.error('[openModal] Error:', error);
+            }
+        }
+
+        /**
+         * Handles image load errors in the modal with retry logic.
+         */
+        function handleModalImageError(event) {
+            const img = event.target;
+            if (!img.dataset.hasTriedReload) {
+                console.warn(`Modal image failed to load: ${img.src}. Retrying...`);
+                img.dataset.hasTriedReload = 'true';
+                img.src = img.src.split('?')[0] + `?retry=${Date.now()}`;
+            } else {
+                console.error(`Modal image failed to load after retry: ${img.src}`);
+                img.alt = 'Image failed to load.';
+                img.style.display = 'none'; // Hide the image element
+                // Optionally, close the modal or notify the user
+            }
+        }
+
+        /**
+         * Closes the chart modal.
+         */
+        function closeModal() {
+            try {
+                modal.style.display = 'none';
+                modal.setAttribute('aria-hidden', 'true');
+                currentModalIndex = -1;
+                document.body.style.overflow = '';
+                console.log('[closeModal] Modal closed.');
+
+                // Remove error handler to prevent multiple bindings
+                modalImg.removeEventListener('error', handleModalImageError);
+            } catch (error) {
+                console.error('[closeModal] Error:', error);
+            }
+        }
+
+        // Event listener to close modal when clicked outside the image
+        modal.addEventListener('click', () => {
+            closeModal();
+        });
+
+        // Keyboard navigation within the modal
+        document.addEventListener('keydown', function(event) {
+            if (modal.style.display === 'block') {
+                const currentCharts = pageConfigs[currentPage].charts;
+                switch (event.key) {
+                    case 'Escape':
+                    case ' ':
+                    case 'Enter':
+                        event.preventDefault();
+                        closeModal();
+                        break;
+                    case 'ArrowRight':
+                        event.preventDefault();
+                        currentModalIndex = (currentModalIndex + 1) % currentCharts.length;
+                        modalImg.src = loadedImages[currentCharts[currentModalIndex]];
+                        break;
+                    case 'ArrowLeft':
+                        event.preventDefault();
+                        currentModalIndex = (currentModalIndex - 1 + currentCharts.length) % currentCharts.length;
+                        modalImg.src = loadedImages[currentCharts[currentModalIndex]];
+                        break;
+                }
+            }
+        });
+
+        /**
+         * Initializes the polling mechanism to periodically fetch chart updates.
+         */
+        function initializePolling() {
+            let pollTimeoutId = null;
+            let nextPollTime = Date.now() + POLLING_INTERVAL;
+
+            /**
+             * Executes the polling function to fetch updates.
+             */
+            const pollFunction = async () => {
+                if (!isPollingActive) {
+                    return;
+                }
+
+                try {
+                    await fetchChartInfoIfNeeded('Polling');
+
+                    if (isPollingActive) {
+                        nextPollTime = Date.now() + POLLING_INTERVAL;
+                        console.log(`[pollFunction] Next poll scheduled in ${POLLING_INTERVAL / 1000} seconds.`);
+                        scheduleNextPoll();
+                    }
+                } catch (error) {
+                    console.error('[pollFunction] Error during polling:', error);
+                    scheduleNextPoll();
+                }
+            };
+
+            /**
+             * Schedules the next polling attempt.
+             */
+            function scheduleNextPoll() {
+                if (pollTimeoutId) {
+                    clearTimeout(pollTimeoutId);
+                }
+
+                const timeUntilNextPoll = Math.max(0, nextPollTime - Date.now());
+                console.log(`[scheduleNextPoll] Time until next poll: ${Math.floor(timeUntilNextPoll / 1000)} seconds.`);
+                pollTimeoutId = setTimeout(pollFunction, timeUntilNextPoll);
+            }
+
+            /**
+             * Handles changes in page visibility to manage polling.
+             */
+            async function handleVisibilityChange() {
+                if (document.visibilityState === 'visible' && isPollingActive) {
+                    if (pollTimeoutId) {
+                        clearTimeout(pollTimeoutId);
+                    }
+
+                    if (Date.now() >= nextPollTime) {
+                        console.log('[handleVisibilityChange] Visibility changed to visible. Triggering immediate poll.');
+                        await pollFunction();
+                    } else {
+                        console.log('[handleVisibilityChange] Visibility changed to visible. Scheduling next poll based on remaining time.');
+                        scheduleNextPoll();
+                    }
+                }
+            }
+
+            // Start polling
+            window.startEnhancedPolling = () => {
+                if (isPollingActive) {
+                    console.log('[startEnhancedPolling] Polling is already active.');
+                    return;
+                }
+                isPollingActive = true;
+                nextPollTime = Date.now() + POLLING_INTERVAL;
+                console.log(`[startEnhancedPolling] Polling started. Next poll at ${new Date(nextPollTime).toLocaleTimeString()}.`);
+                scheduleNextPoll();
+            };
+
+            // Stop polling
+            window.stopEnhancedPolling = () => {
+                if (!isPollingActive) {
+                    console.log('[stopEnhancedPolling] Polling is already inactive.');
+                    return;
+                }
+                isPollingActive = false;
+                if (pollTimeoutId) {
+                    clearTimeout(pollTimeoutId);
+                    console.log('[stopEnhancedPolling] Polling stopped and existing timeout cleared.');
+                    pollTimeoutId = null;
+                }
+            };
+
+            // Listen for visibility changes
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+            window.addEventListener('focus', handleVisibilityChange);
+
+            // Clean up on page unload
+            window.addEventListener('beforeunload', () => {
+                stopEnhancedPolling();
+                document.removeEventListener('visibilitychange', handleVisibilityChange);
+                window.removeEventListener('focus', handleVisibilityChange);
+                console.log('[beforeunload] Page is unloading. Polling stopped and event listeners removed.');
+            });
+        }
+
+        // Attach event listeners to navigation buttons
+        document.querySelectorAll('.nav-button').forEach(button => {
+            button.addEventListener('click', () => {
+                const selectedPage = parseInt(button.dataset.page);
+                currentPage = selectedPage;
+                renderPage(currentPage);
+            });
+        });
+
+        /**
+         * Refreshes the page by fetching latest data and updating the view.
+         * @param {string} trigger - The source triggering the refresh.
+         */
+        async function refreshPage(trigger = 'Unknown') {
+            try {
+                await fetchChartInfoIfNeeded(trigger);
+                await preloadImages();
+                renderPage(currentPage);
+                startEnhancedPolling();
+            } catch (error) {
+                console.error('[refreshPage] Error refreshing page:', error);
+            }
+        }
+
+        // Initialize the application once the DOM is fully loaded
+        window.addEventListener('DOMContentLoaded', () => {
+            try {
+                initializePolling();
+
+                (async () => {
+                    try {
+                        await fetchChartInfoIfNeeded('DOMContentLoaded');
+                        await fetchAndParseText();
+                        await preloadImages();
+                        renderPage(currentPage);
+                        startEnhancedPolling();
+                    } catch (error) {
+                        console.error('[initialize] Initialization error:', error);
+                    }
+                })();
+            } catch (error) {
+                console.error('[DOMContentLoaded] Error during initialization:', error);
+            }
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,106 @@
+Page 1 — Featured Chart
+# Site Overview
+This site keeps up-to-date charts of three models:
+1. A standard power law chart.
+2. A Quantiles version of the power law.
+3. A Days Ahead version of the power law.
+
+You can learn more about the models by going to their pages.
+
+## Bitcoin’s 4 Year Cycles
+Bitcoin tends to follow a four year cycle.
+
+Take a good look at the chart above. The orange line you see on the chart is tracing out the current cycle. The pastel green, purple, and blue lines are “ghosts” of the earlier cycles.
+
+You can also see that most years bitcoin goes up. But once every four years it has gone down. 2026 is the next expected down year.
+
+You can see the same information in this chart which color codes the years.
+![Cycles chart](assets/cycle.png)
+
+## Using This Site
+### Notes
+- Note that the charts follows the common convention of tracking closing prices in [UTC time](https://www.timeanddate.com/worldclock/timezone/utc). That's what you'll see on the charts. For your convenience, the time at the top of each page is your local time.
+- This site was not intended for mobile devices. It's only been tested on computers.
+- Please use but don’t abuse this site. Refreshing over and over won’t do anything except use up bandwidth.
+- **The current price is not updated in real time.** You should expect that the price can be up to a few hours old, due to the way GitHub Actions work.
+- When there is new price data available, you’ll see a REFRESH button. Go ahead and click on it to get newer data.
+### Interface
+- Navigate between the pages with the green buttons
+- Click on a chart to see an enlarged version, click again to shrink it.
+- You can quickly switch between all the charts on a page with the left arrow ← and right arrow → keys.
+
+## Not Investment Advice
+This site should not be considered investment advice
+
+## About This Site
+The GitHub website is here:
+
+[github.com/nosredna-btc/btc-cycle-charts](https://github.com/nosredna-btc/btc-cycle-charts)
+
+This is a free site that uses GitHub Pages and Actions. Github Actions cron jobs do not always trigger often, so the data from this site may not be fresh. I don’t believe that should make a difference to anyone, since this is by no means a day trader’s tool. This is for people interested in comparing the current bitcoin cycle to previous ones.
+
+
+
+
+Page 2 — Power Law Charts
+# Power Law Model
+This model uses the popular Power Law. Bitcoin has tended to follow a power law relation throughout its history.
+
+Here is a chart that shows how well bitcoin has followed a power law support line.
+![Support chart](assets/support.png)
+This "Bitcoin Support" chart is a "log/linear" chart, meaning the left labels are displayed logarithmically, which is the most common way to display the prices of investments over long time periods because it shows percentage changes correctly across the history of the investment.
+
+Why does the price droop? It's because the gains in bitcoins early history were much larger. Bitcoin's gains are slowing down, but slowly. This chart shows what we can expect from bitcoin over time, if the power law holds up.
+
+![Falloff chart](assets/falloff.png)
+
+## About This Model
+
+The Power Law Model, as its name says, uses a power law equation as the support line. The upper bounds line has exponential falloff (meaning that bitcoin’s peaks have gotten lower each cycle).
+
+Four different cycles are displayed on this chart. The dates and prices match the current cycle. The other lines are "ghosts which have been adjusted to conform to this cycle’s boundaries.
+
+This model is the most conservative model.
+
+Four year, two year, and one year charts are provided. Click on a chart to enlarge it.
+
+
+
+
+Page 3 — Quantiles Charts
+# Quantiles Model
+
+This model has different equations for the support and upper bounds. The curve fitting was done to fit only the very topmost and bottommost points.
+
+This model ended up ignoring the top of Cycle 3 because it did not contain any of the topmost points. Cycle 3 had two peaks, but neither were as high as we might have expected based on Cycles 1 and 2.
+
+The ghost lines are adjusted to conform to this cycle’s boundaries.
+
+This model is more aggressive than the Power Law model.
+
+Four year, two year, and one year charts are provided. Click on a chart to enlarge it.
+
+In the image below, you can see how different quantile curves approximate the top, middle, and bottom of the bitcoin price history.
+![Quantiles chart](assets/quantiles.png)
+
+
+
+
+Page 4 — Days Ahead Charts
+# Days Ahead Model
+This model uses the Power Law support line, but there is no upper bounds line. Instead, the lines track the number of days ahead of the support line the price is.
+
+The ghost lines are adjusted to conform to this cycle’s boundaries.
+
+This model is more aggressive than the Power Law model.
+
+Four year, two year, and one year charts are provided. Click on a chart to enlarge it.
+
+
+
+
+Page 5 — All Charts
+# All Charts
+This page has all three charts for all three models. It’s useful when you want to compare the models against each other.
+
+Four year, two year, and one year charts are provided. Click on a chart to enlarge it.
